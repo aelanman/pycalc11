@@ -1,0 +1,9 @@
+include README.rst
+include setup.py
+recursive-include calc11
+
+exclude .gitignore
+prune difxcalc11
+prune build
+
+global-exclude *.pyf *.o
