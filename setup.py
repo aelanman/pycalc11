@@ -1,17 +1,25 @@
 # -*- coding: utf-8 -*-
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 import os
 import sys
+
 import setuptools
-from distutils.dep_util import newer
-
-from numpy.distutils.core import Extension, setup
 
 
-BASE = os.path.abspath('difxcalc11')
+INSTALL_HELP = """
+To install calc11, you should either have difxcalc11 installed in the
+calc11 directory or have defined an environment variable DIFXCALC11
+that contains the path.
+"""
+
+BASE = os.path.abspath(os.getenv('DIFXCALC11', default='difxcalc11'))
 SRCDIR = os.path.join(BASE, 'src')
 DATADIR = os.path.join(BASE, 'data')
+if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
+    print(f"Failed to find source or data directories {SRCDIR} and {DATADIR}")
+    print(INSTALL_HELP)
+    sys.exit(1)
+
 MODNAME = 'calc11'
 F90_COMBINED = os.path.join(SRCDIR, MODNAME+'.f90')
 
@@ -31,21 +39,11 @@ DATA_FILES = [os.path.join(BASE, 'data', f) for f in os.listdir(DATADIR)
 DE421_FILE_NAME = [f for f in os.listdir(DATADIR) if sys.byteorder in f][0]
 
 
-# https://mail.python.org/pipermail/distutils-sig/2007-September/008253.html
-class NumpyExtension(setuptools.Extension):
-    """Extension type that adds the NumPy include directory to include_dirs."""
-
-    @property
-    def include_dirs(self):
-        from numpy import get_include
-        return self._include_dirs + [get_include()]
-
-    @include_dirs.setter
-    def include_dirs(self, include_dirs):
-        self._include_dirs = include_dirs
-
-
 def get_extensions():
+    from distutils.dep_util import newer
+    from numpy.distutils.core import Extension
+
+    # TODO: build inside a build directory rather than inside difxcalc11!!
     if not (os.path.isfile(PARAM11) and newer(PARAM11, PARAM11_IN)):
         with open(PARAM11_IN, 'rt') as fr, open(PARAM11, 'wt') as fw:
             # TODO: point to installed data files, make link safe for windows.
@@ -66,7 +64,7 @@ def get_extensions():
                     f90file.writelines(fh.readlines())
 
     calc_ext = Extension(
-        name="difxcalc.calc11",
+        name="calc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,
         include_dirs=[SRCDIR],
         libraries=['gsl'],
@@ -76,9 +74,22 @@ def get_extensions():
     return [calc_ext]
 
 
-setup(name='calc11',
-      zip_safe=False,
-      version='0.1',
-      ext_modules=get_extensions())
-# TODO: install data files as well and use them in library.
-#      data_files=[(os.path.join('difxcalc', 'data'), DATA_FILES)])
+def configuration(parent_package='', top_path=None):
+    from numpy.distutils.misc_util import Configuration
+
+    # TODO: install data files as well and use them in library.
+    #      data_files=[(os.path.join('difxcalc', 'data'), DATA_FILES)])
+    config = Configuration(
+        'calc11', parent_package, top_path,
+        packages=setuptools.find_packages(),
+        version='0.1',
+        license='GPL',
+        zip_safe=False,
+        ext_modules=get_extensions())
+    return config
+
+
+if __name__ == "__main__":
+    from numpy.distutils.core import setup
+
+    setup(configuration=configuration)
