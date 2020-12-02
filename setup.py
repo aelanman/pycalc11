@@ -4,6 +4,7 @@ import os
 import sys
 
 import setuptools
+from setuptools.config import read_configuration
 
 
 INSTALL_HELP = """
@@ -12,7 +13,8 @@ calc11 directory or have defined an environment variable DIFXCALC11
 that contains the path.
 """
 
-BASE = os.path.abspath(os.getenv('DIFXCALC11', default='difxcalc11'))
+BASE = os.getenv('DIFXCALC11', default=os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), 'difxcalc11'))
 SRCDIR = os.path.join(BASE, 'src')
 DATADIR = os.path.join(BASE, 'data')
 if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
@@ -79,17 +81,16 @@ def configuration(parent_package='', top_path=None):
 
     # TODO: install data files as well and use them in library.
     #      data_files=[(os.path.join('difxcalc', 'data'), DATA_FILES)])
-    config = Configuration(
-        'calc11', parent_package, top_path,
-        packages=setuptools.find_packages(),
-        version='0.1',
-        license='GPL',
-        zip_safe=False,
-        ext_modules=get_extensions())
+    config = Configuration('', parent_package, top_path,
+                           ext_modules=get_extensions())
     return config
 
 
 if __name__ == "__main__":
     from numpy.distutils.core import setup
 
-    setup(configuration=configuration)
+    setup_config = read_configuration('setup.cfg')
+    metadata, options = setup_config['metadata'], setup_config['options']
+    if 'python_requires' in options:
+        options['python_requires'] = str(options['python_requires'])
+    setup(configuration=configuration, **metadata, **options)
