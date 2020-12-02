@@ -6,7 +6,7 @@ from numpy.testing import assert_allclose
 from astropy import constants as const
 from astropy.utils.data import get_pkg_data_filename
 
-from calc11.io import read_im
+from calc11.io import parse_im
 from calc11 import calc11
 
 
@@ -130,7 +130,7 @@ class TestFromCalcFile(CALCTestBase):
     def setup_class(cls):
         super().setup_class()
         # Load comparison data from direct run of executable.
-        cls.im = read_im(CRAB_IM)
+        cls.im = parse_im(CRAB_IM)
 
     @classmethod
     def teardown_class(cls):
@@ -201,6 +201,8 @@ class TestFromCalcFile(CALCTestBase):
         # Note: can only compare first and last point for both telescopes
         # with zero point of first and second polynomial.
         assert_allclose(calc11.out_c.delay_f[0, 0, :2, 0],
-                        -1e-6*self.im['delay'][0, :, 0], atol=0, rtol=4e-16)
+                        -1e-6*self.im['scan'][0]['delay'][0, 0, :, 0],
+                        atol=0, rtol=4e-16)
         assert_allclose(calc11.out_c.delay_f[-1, 0, :2, 0],
-                        -1e-6*self.im['delay'][2, :, 0], atol=0, rtol=4e-16)
+                        -1e-6*self.im['scan'][0]['delay'][1, 0, :, 0],
+                        atol=0, rtol=4e-16)
