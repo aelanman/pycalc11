@@ -27,18 +27,22 @@ def test_read_im():
     im = parse_im(CRAB_IM)
     assert im['telescope'][0]['name'].item().strip() == 'CHIME'
     assert im['calc program'] == 'DIFXCALC'
-    assert set(im['scan'].keys()) == {0}
-    assert_allclose(im['scan'][0]['delay'][0, 0, 0],
+    assert len(im['scan']) == 1
+    scan0 = im['scan'][0]
+    assert len(scan0) == 3
+    assert set(scan0.meta.keys()) == {'pointing src', 'phs ctr', 'main'}
+    assert_allclose(scan0['delay'][0, 0, 0],
                     [1.890259772582982e+04,
                      1.428524766492706e-02,
                      -3.424386838841481e-05,
                      -1.265439323865132e-11,
                      1.509492047497244e-14,
                      2.741316895347732e-19])
-    assert_allclose(im['scan'][0]['delay'][2, 1, 1],
+    assert_allclose(scan0['delay'][2, 1, 1],
                     [1.596502423550063e+04,
                      -6.661073449020709e-01,
                      -2.727294852756184e-05,
                      5.903191697810408e-10,
                      1.213093754392361e-14,
                      -3.629969553109230e-20])
+    assert scan0['delay'].info.meta['unit'] == u.us
