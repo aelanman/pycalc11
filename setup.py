@@ -7,22 +7,23 @@ import setuptools
 from setuptools.config import read_configuration
 
 
-INSTALL_HELP = """
-To install calc11, you should either have difxcalc11 installed in the
-calc11 directory or have defined an environment variable DIFXCALC11
-that contains the path.
-"""
+#INSTALL_HELP = """
+#To install pycalc11, you should either have difxcalc11 installed in the
+#calc11 directory or have defined an environment variable DIFXCALC11
+#that contains the path.
+#"""
 
-BASE = os.getenv('DIFXCALC11', default=os.path.join(
-    os.path.abspath(os.path.dirname(__file__)), 'difxcalc11'))
+#BASE = os.getenv('DIFXCALC11', default=os.path.join(
+#    os.path.abspath(os.path.dirname(__file__)), 'difxcalc11'))
+BASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "calc11")
 SRCDIR = os.path.join(BASE, 'src')
 DATADIR = os.path.join(BASE, 'data')
 if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
     print(f"Failed to find source or data directories {SRCDIR} and {DATADIR}")
-    print(INSTALL_HELP)
+#    print(INSTALL_HELP)
     sys.exit(1)
 
-MODNAME = 'calc11'
+MODNAME = 'pycalc11'
 F90_COMBINED = os.path.join(SRCDIR, MODNAME+'.f90')
 
 SRC_FILES = os.listdir(SRCDIR)
@@ -34,7 +35,6 @@ INCLUDES = [os.path.join(SRCDIR, f) for f in SRC_FILES if f.endswith('.i')
             and not f.startswith('param11')]
 PARAM11_IN = os.path.join(SRCDIR, 'param11.i.in')
 PARAM11 = os.path.join(SRCDIR, 'param11.i')
-
 
 DATA_FILES = [os.path.join(BASE, 'data', f) for f in os.listdir(DATADIR)
               if f.endswith(('.dat', '.coef')) or sys.byteorder in f]
@@ -69,8 +69,10 @@ def get_extensions():
         name="calc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,
         include_dirs=[SRCDIR],
-        libraries=['gsl'],
-        extra_f90_compile_args=['-fallow-argument-mismatch'],
+        libraries=['gsl', 'gslcblas'],
+#        extra_f90_compile_args=['-fallow-argument-mismatch'],
+        #extra_f90_compile_args=['-Wno-argument-mismatch'],
+        extra_f90_compile_args=['-Wargument-mismatch'],
     )
 
     return [calc_ext]
