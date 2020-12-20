@@ -946,7 +946,6 @@
      &      tg2_tg1, dtg2_tg1,                                          &
      &      delta_t_grav, d_delta_t_grav, delta_t_grav_Sun,             &
      &      d_delta_t_grav_Sun )
-       write(6,*) "Consensus model"   
       Endif
 !
 !       write(6,*) 'ddrvr3/R1mag,R1magdt ',  R1mag,R1magdt
@@ -1002,7 +1001,7 @@
       ENDIF
 !
 !   Load delay and rate arrays
-      write(6,*) 'tg2_tg1,dtg2_tg1 ', tg2_tg1, dtg2_tg1
+!      write(6,*) 'tg2_tg1,dtg2_tg1 ', tg2_tg1, dtg2_tg1
         Delay_f(Itime,Istation1,(Istation2-1),Isrc) = tg2_tg1 
          Rate_f(Itime,Istation1,(Istation2-1),Isrc) = dtg2_tg1
 !        write(6,*) 'ddrvr: ', Iscan,J2m,Itime,Istation1,(Istation2-1), &

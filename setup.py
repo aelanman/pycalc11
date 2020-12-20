@@ -23,7 +23,7 @@ if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
 #    print(INSTALL_HELP)
     sys.exit(1)
 
-MODNAME = 'pycalc11'
+MODNAME = 'calc11'
 F90_COMBINED = os.path.join(SRCDIR, MODNAME+'.f90')
 
 SRC_FILES = os.listdir(SRCDIR)
@@ -66,7 +66,7 @@ def get_extensions():
                     f90file.writelines(fh.readlines())
 
     calc_ext = Extension(
-        name="calc11.calc11",
+        name="pycalc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,
         include_dirs=[SRCDIR],
         libraries=['gsl', 'gslcblas'],

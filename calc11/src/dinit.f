@@ -1988,7 +1988,7 @@
           If (iquit.eq.0) Write(6,'(/)')
           Write(6,'("Warning - No ocean pole tide loading coefficients for ",  &
      &         A8,/, "Will continue but you really should update file ", &
-     &         A50,/)')  Dbsites(I), OPTL_file
+     &         A100,/)')  Dbsites(I), OPTL_file
           Iquit = Iquit + 1
         endif
 !        If (Iquit .gt. 0) Then
