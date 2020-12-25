@@ -229,7 +229,7 @@
 !!!!!!!!!!!! Debug !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !--------------------------------------------------------------------------
 !     Check KTHED to determine if debug output is neccessary.
-      !IF ( KTHED .ne. 0 )  Then
+      IF ( KTHED .ne. 0 )  Then
        WRITE (6, 9100 )
  9100  FORMAT (1X, "Debug output for subroutine THERY." )
     8  FORMAT(A,4D25.16/(7X,5D25.16))
@@ -240,7 +240,7 @@
        write(6,8)' CON_PART  ',CON_PART
        write(6,8)' CONSENSUS ',CONSENSUS
        write(6,8)' Sunplus   ',Sunplus
-!      Endif
+      Endif
 !
       Return
       END

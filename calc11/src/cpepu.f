@@ -767,8 +767,8 @@
 !----------------------------------------------------------------------
 !
 !   ENTRY POINT - 1ST TIME IN, GET POINTER DATA, ETC., FROM EPH FILE
-      IF(FIRST) THEN
-        FIRST=.FALSE.
+!      IF(FIRST) THEN
+!        FIRST=.FALSE.
 !
       NRFILE=12
       I_RECL_JPL = N_RECL_JPL * K_SIZE_JPL
@@ -797,7 +797,7 @@
 !       write(6,'("IPT: ",3(13i8,/))') IPT
       NRL=0
 !
-      ENDIF
+!      ENDIF        ! First entry
 !
 !       ********** MAIN ENTRY POINT **********
       IF(ET2(1) .EQ. 0.D0) RETURN

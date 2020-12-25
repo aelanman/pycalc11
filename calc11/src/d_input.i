@@ -5,7 +5,7 @@
 !    correlated plus 1 for the geocenter. (Also see Max_Stat in cmxst.i)
       Integer*4 MaxStat
       Parameter (MaxStat = 41)
-!   AEL --- Revise here --> lose vars related to difxcalc
+!
       CHARACTER*128 calc_file_name, Jobname, IM_file_name, calc_out_file
       CHARACTER*10  Base_mode, L_time, Atmdr, Atmwt, Near_Far
       Real*8        d_interval

@@ -1,4 +1,4 @@
-      SUBROUTINE START (Num_Scans, Kjob)
+      SUBROUTINE dSTART (Num_Scans, Kjob)
       IMPLICIT None
 !
 !           Input variables:
@@ -140,7 +140,7 @@
 !
 !
 !   Get the apriori's from the .calc file.
-!!!!      Call dGet_input(Kjob)
+!!      Call dGet_input(Kjob)
        Num_Scans = NumScans
 !
 ! Set Geocenter station;
@@ -152,7 +152,85 @@
       SITXYZ(2,1) = 0.D0
       SITXYZ(3,1) = 0.D0
        NUMSIT = NUMSIT + 1
-
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!     Get the start and stop times, all on the even minute
+!       Intrvl(1,1) = StartYr
+!       Intrvl(2,1) = StartMo
+!       Intrvl(3,1) = StartDay
+!       Intrvl(4,1) = StartHr
+!       Min2 = StartMin/2
+!       MinStrt = Min2*2
+!       Intrvl(5,1) = MinStrt 
+!       JD1    = JDY2K (StartYr,StartMo,StartDay)
+!       Xintv(1) = JD1 + Intrvl(4,1)/24.D0 + Intrvl(5,1)/1440.D0
+!!
+!! Add 1 second to stop time to get an additional polynomial interval
+!!  if stop time is on the even minute.
+!       XMin = StartMin + (StartSec+ScanDur+1)/60.D0 + 120.001D0/60.D0
+!       Min2 = Xmin/2
+!       MinStop = Min2*2
+!       StopSec = 0
+!       StopMin = MinStop
+!        Num2Min = (MinStop - MinStrt)/2
+!       StopHr = StartHr
+!!        If (StopMin .ge. 60) Then
+!         StopHr = StopHr + StopMin/60
+!         StopMin = MOD(StopMin,60)
+!        Endif
+!       StopDay = StartDay
+!        If (StopHr .ge. 24) Then
+!         StopDay = StopDay + StopDay/24
+!         StopHr = MOD(StopHr,24)
+!        Endif
+!       StopMo = StartMo
+!        If (MOD(StartYr,4) .eq. 0) IMNTHS(2) = IMNTHS(2) + 1
+!        If (Stopday .gt. IMNTHS(StartMo)) Then
+!         StopMo = StopMo + 1
+!         StopDay = StopDay - IMNTHS(StartMo)
+!        Endif
+!! The scan should not be allowed to cross the year boundary, but 
+!!   just in case:
+!       StopYr = StartYr
+!        If (StopMo .ge. 13) Then
+!         StopYr = StopYr + 1
+!         StopMo = StopMo - 12
+!        Endif
+!!
+!       Intrvl(1,2) = StopYr
+!       Intrvl(2,2) = StopMo
+!       Intrvl(3,2) = StopDay
+!       Intrvl(4,2) = StopHr
+!       Intrvl(5,2) = StopMin
+!       JD2    = JDY2K (StopYr,StopMo,StopDay)
+!       Xintv(2) = JD2 + Intrvl(4,2)/24.D0 + Intrvl(5,2)/1440.D0
+!!
+!! Start/Stop time in UTC minutes (1 day = 1440 minutes)
+!        StrtUTCmin = (Xintv(1) - JD1) * 1440.D0
+!        StopUTCmin = (Xintv(2) - JD1) * 1440.D0
+!        ProcMin = StopUTCmin - StrtUTCmin
+!!       NumEpochs = ((ProcMin/2.D0 + .001) * 5) + 1
+!        NumEpochs = ((ProcMin*60. + .001)/d_interval) + 1
+!! Check that the arrays are sized large enough
+!        If (NumEpochs .gt. Max_Epoch) Then
+!          Write(6,'(/," Requesting ",I4," epochs. Max_epoch is ",I4,    &
+!     &    " in c2poly.i.",/)') NumEpochs, Max_Epoch
+!          Stop
+!        Endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!     Write(6,1078) Intrvl, StrtUTCmin, StopUTCmin, ProcMin, NumEpochs
+!1078 Format('dSTART: Start UTC: ',5I6,/,'         Stop UTC: ',5I6,/,   &
+!    &  ' StrtUTCmin, StopUTCmin, ProcMin, NumEpochs: ', 3F8.2,I5)
+!       Write(6,*) 'd_interval ', d_interval
+!
+!      Call YMDJL(FJD2, StopYr, StopMo, StopDay)
+!
+!  See if we are doing a near-field object
+!      Finite_model = .False.
+!     If (NumSpace .ge. 1) Finite_model = .True.
+!
+!     Normal conclusion.
       RETURN
 !
       END
@@ -1071,257 +1149,281 @@
       End
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-
-!!      !!! AEL -- Need to remove this
-!!      SUBROUTINE GETCL(Calcfiles, IMfiles)
-!!      IMPLICIT None
-!!!
-!!      INCLUDE 'd_input.i'
-!!!       To variables:
-!!!        3) Numjobs        - Number of .calc files that will be processed.
-!!!!!!!    4) Base_mode      - Baseline mode: 'geocenter' or 'baseline'.
-!!!!!!!                        Default is 'geocenter'  => not currently used.
-!!!        5) L_time         - 'dont-solve' or 'solve' for light travel
-!!!                            time from spacecraft. Default is 'dont-solve'. 
-!!!        6) Atmdr          - 'Add-dry   ' or 'no-Add-dry' atmosphere. 
-!!!        7) Atmwt          - 'Add-wet   ' or 'no-Add-wet' atmosphere. 
-!!!
-!!!   Local variables
-!!!        1) Calcfiles(n)   - List of input .calc files
-!!!        2) IMfiles(n)     - List of output .im files
-!!!        3) calc_file - Input '----.calc' file name.
-!!!        4) IM_file   - Output '----.im' file name.
-!!!
-!!!     Programmer - David Gordon Jan-Apr, 2013 
-!!!                  David Gordon March 2015
-!!!                  David Gordon June 2015
-!!!
-!!!     CHARACTER*40  calc_file_name, Jobname, IM_file_name
-!!      CHARACTER*128 calc_file, IM_file
-!!      CHARACTER*128 Calcfiles(2000), IMfiles(2000)
-!!      CHARACTER*128 ch_cl
-!!!     CHARACTER*10  Base_mode, L_time
-!!      Real*8  t_offsec
-!!      Integer*4 Iar, I, Ic, Index, isec, Int_poly, i1, Ix, Iskip
-!!      Integer*4 ierr, Icm1, l_scr, get4unit, iv, Kjob
-!!!
-!!      Do I = 1,128
-!!       calc_file(I:I) = ' '
-!!       Jobname(I:I) =   ' '
-!!       IM_file(I:I) =   ' '
-!!      Enddo
-!!!     calc_out_file =  'Null                                    '
-!!      I_out = 0
-!!      IM_out = 1
-!!      SpOffset = 'NoOffset'
-!!!  Defaults:
-!!      Base_mode = 'geocenter ' 
-!!      L_time = 'dont-solve'
-!!      Atmdr  = 'Add-dry   '
-!!      Atmwt  = 'Add-wet   '
-!!      Verbose = 0
-!!      t_offset = 0.D0
-!!!     NF_model = 'Sekido  '
-!!      NF_model = 'Duev    '
-!!      DoStnPos = 0
-!!      overwrite = 'no  '
-!!      UVW = 'exact '
-!!!   Interval between Calc runs (default is every 24 seconds 
-!!!      for VLBA DiFX correlator).
-!!      d_interval = 24.D0
-!!      int_poly = 120
-!!!   # of Calc epochs in each 2-minute interval
-!!      epoch2m = (120.0001/d_interval) + 1
-!!!     write (6,*) ' d_interval, epoch2m: ', d_interval, epoch2m 
-!!!   # of input calc jobs
-!!      Numjobs = 0
-!!!
-!!!   Find number of parameters on the command line
-!!       Iar = IARGC()
-!!!      write(6,*) '  '
-!!!      write(6,*) ' GETCL/Iar =  ', Iar
-!!! If no arguments, print out the help menu and terminate 
-!!       If (Iar .eq. 0) Call USAGE()
-!!        Iskip = 0
-!!!
-!!       Do I = 1, Iar
-!!          If (Iskip .eq. 1) Then   ! Next argument already read
-!!           Iskip = 0
-!!           Go to 100
-!!          Endif
-!!        Call GETARG(I,ch_cl)
-!!!
-!!         Ic = Index(ch_cl,'.calc')
-!!         If (Ic .ge. 2) Then
-!!          Numjobs = Numjobs + 1
-!!          Ijob = Ic-1
-!!          Jobname(1:Ijob) = ch_cl(1:Ijob)
-!!          Icalc = Ijob+5
-!!          calc_file(1:Icalc) = ch_cl(1:Icalc) 
-!!            Do Ix = Icalc+1, 128
-!!             calc_file(Ix:Ix) = ' '
-!!            Enddo
-!!          IM_file(1:Ijob) = Jobname(1:Ijob)
-!!!         IM_file(Ijob+1:Ijob+4) =  '.im'//CHAR(0)
-!!          IM_file(Ijob+1:Ijob+3) =  '.im'
-!!            Do Ix = Ijob+4, 128
-!!             IM_file(Ix:Ix) = ' '
-!!            Enddo
-!!          Calcfiles(Numjobs) = calc_file
-!!          IMfiles(Numjobs) = IM_file
-!!          Go to 100
-!!         Endif
-!!!
-!!         If (ch_cl(1:2) .eq. '-h') Call USAGE() 
-!!         If (ch_cl(1:6) .eq. '--help') Call USAGE()
-!!!        If (ch_cl(1:2) .eq. '-v') Verbose = 1
-!!!        If (ch_cl(1:9) .eq. '--verbose') Verbose = 1
-!!!        If (ch_cl(1:2) .eq. '-q') Verbose = -1
-!!!        If (ch_cl(1:7) .eq. '--quiet') Verbose = -1
-!!!        If (ch_cl(1:2) .eq. '-b') Base_mode = 'baseline  '
-!!!        If (ch_cl(1:2) .eq. '-m') Base_mode = 'master-stn'
-!!         If (ch_cl(1:3) .eq. '-lt') Then
-!!            L_time = 'solve     '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:4) .eq. '-dry') Then
-!!            Atmdr  = 'no-Add-dry'
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:4) .eq. '-wet') Then
-!!            Atmwt  = 'no-Add-wet'
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:2) .eq. '-S' .or. ch_cl(1:8) .eq. '--Sekido') Then
-!!            NF_model = 'Sekido  '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:2) .eq. '-R' .or. ch_cl(1:9) .eq. '--Ranging') Then
-!!            NF_model = 'Ranging '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:2) .eq. '-D' .or. ch_cl(1:6) .eq. '--Duev') Then
-!!            NF_model = 'Duev    '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:2) .eq. '-s' .or. ch_cl(1:6) .eq. '--stnpos') Then
-!!            DoStnPos = 1
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:2) .eq. '-f') Then    ! force execution
-!!            overwrite = 'yes '
-!!!             write(6,*) ' Overwriting existing .im files! '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:11) .eq. '-uncorr') Then   ! U,V,W: non-relativistic geometry 
-!!            UVW = 'uncorr'
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:11) .eq. '-approx') Then   ! U,V,W: geometry with aberration 
-!!            UVW = 'approx' 
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:11) .eq. '-exact ') Then   ! U,V,W: partial derivatives of delay
-!!            UVW = 'exact '
-!!            Go to 100
-!!         Endif
-!!         If (ch_cl(1:11) .eq. '-noatmo') Then   ! U,V,W: 'exact' but no atmosphere 
-!!            UVW = 'noatmo'
-!!            Go to 100
-!!         Endif
-!!
-!!         If (ch_cl(1:2) .eq. '-v')  Then
-!!           Call GETARG(I+1,ch_cl)
-!!           Read(ch_cl,*,err=20) iv
-!!           Verbose = iv
-!!           Iskip = 1 
-!!           Go to 100
-!!  20        Continue
-!!           Verbose = 1
-!!           Go to 100
-!!         Endif
-!!!
-!!         If (ch_cl(1:2) .eq. '-t') Then     
-!!           Call GETARG(I+1,ch_cl)
-!!           Read(ch_cl,*,err=22) t_offsec
-!!           t_offset = t_offsec/86400.D0
-!!           SpOffset = 'Offset  '
-!!!          write(6,*) 't_offset ', SpOffset, t_offset
-!!           Iskip = 1 
-!!           Go to 100
-!!         Endif
-!!! Process all .calc files in the current directory
-!!         If (ch_cl(1:3) .eq. 'all' .or. ch_cl(1:5) .eq. '--all' .or.    &
-!!     &       ch_cl(1:1) .eq. '*') Then     
-!!            If (I .ne. Iar) Then
-!!             Write(6,*) ' *, all, or --all must be the last command line argument, Quitting!'
-!!             Stop
-!!            Endif
-!!            If (Numjobs .ne. 0) Then
-!!             Write(6,*) ' Illegal combination of jobs, Quitting! '
-!!             Stop
-!!            Endif
-!!            l_scr = get4unit()
-!!            Open(unit=l_scr,file='scr_file',status='unknown')
-!!            Close(unit=l_scr,status='Delete')
-!!           ierr = SYSTEM('ls *.calc > scr_file')
-!!            Open(unit=l_scr,file='scr_file',status='old')
-!! 60          Continue
-!!              Read(l_scr,'(A128)',end=70) calc_file 
-!!               Numjobs = Numjobs + 1 
-!!               Calcfiles(Numjobs) = calc_file
-!!               IM_file = calc_file
-!!                Icm1 = Index(calc_file,'.calc')
-!!               IM_file(Icm1:Icm1+5) = '.im   '
-!!               IMfiles(Numjobs) = IM_file
-!!               Go to 60
-!! 70           Continue
-!!!           Close(unit=l_scr,status='Delete')
-!!            Close(unit=l_scr)
-!!           Go to 110
-!!         Endif
-!!        
-!!! If we are here, then there is an unrecognized argument.
-!!  80    Continue
-!!        Write (6,*) '  '
-!!        Write (6,*) ' Unrecognized command line argument: ', ch_cl
-!!        Write (6,*) ' Quitting!  '
-!!        Write (6,*) '  '
-!!        Stop
-!!!       Call USAGE()
-!!!
-!! 100    Continue
-!!       Enddo
-!! 110   Continue
-!!!       Write (6,*) '  '
-!!!       Write (6,*) '  '
-!!!         Do I = 1, Numjobs
-!!!            Write (6,*) I,Calcfiles(I),IMfiles(I)
-!!!         Enddo
-!!!       Write (6,*) '  '
-!!!       Write (6,*) '  '
-!!!
-!!! Check for no jobs
-!!        If (Numjobs .eq. 0) Then
-!!         Write (6,*) '  '
-!!         Write (6,*) ' No jobs to process, Quitting! '
-!!         Write (6,*) '  '
-!!         Stop
-!!        Endif
-!!!
-!!!       If (I_out .eq. 1) Then
-!!!         calc_out_file(1:Ijob) = Jobname(1:Ijob)
-!!!         calc_out_file(Ijob+1:Ijob+9) =  '.calc.out'
-!!!         write (6,*) ' calc_out_file ', calc_out_file
-!!!       Endif
-!!!      write(6,*) ' Verbose ', Verbose
-!!!
-!!      Return
-!! 22   Continue
-!!       Write (6,*) 'Error reading time offset. Stopping. '
-!!!      Write (6,*) 'Illegal epoch interval. Stopping. '
-!!       Stop
-!!      End
+      SUBROUTINE GETCL(Calcfiles, IMfiles)
+      IMPLICIT None
+!
+      INCLUDE 'd_input.i'
+!       To variables:
+!        3) Numjobs        - Number of .calc files that will be processed.
+!!!!!    4) Base_mode      - Baseline mode: 'geocenter' or 'baseline'.
+!!!!!                        Default is 'geocenter'  => not currently used.
+!        5) L_time         - 'dont-solve' or 'solve' for light travel
+!                            time from spacecraft. Default is 'dont-solve'. 
+!        6) Atmdr          - 'Add-dry   ' or 'no-Add-dry' atmosphere. 
+!        7) Atmwt          - 'Add-wet   ' or 'no-Add-wet' atmosphere. 
+!
+!   Local variables
+!        1) Calcfiles(n)   - List of input .calc files
+!        2) IMfiles(n)     - List of output .im files
+!        3) calc_file - Input '----.calc' file name.
+!        4) IM_file   - Output '----.im' file name.
+!
+!     Programmer - David Gordon Jan-Apr, 2013 
+!                  David Gordon March 2015
+!                  David Gordon June 2015
+!
+!     CHARACTER*40  calc_file_name, Jobname, IM_file_name
+      CHARACTER*128 calc_file, IM_file
+      CHARACTER*128 Calcfiles(2000), IMfiles(2000)
+      CHARACTER*128 ch_cl
+!     CHARACTER*10  Base_mode, L_time
+      Real*8  t_offsec
+      Integer*4 Iar, I, Ic, Index, isec, Int_poly, i1, Ix, Iskip
+      Integer*4 ierr, Icm1, l_scr, get4unit, iv, Kjob
+!
+      Do I = 1,128
+       calc_file(I:I) = ' '
+       Jobname(I:I) =   ' '
+       IM_file(I:I) =   ' '
+      Enddo
+!     calc_out_file =  'Null                                    '
+      I_out = 0
+      IM_out = 1
+      SpOffset = 'NoOffset'
+!  Defaults:
+      Base_mode = 'geocenter ' 
+      L_time = 'dont-solve'
+      Atmdr  = 'Add-dry   '
+      Atmwt  = 'Add-wet   '
+      Verbose = 0
+      t_offset = 0.D0
+!     NF_model = 'Sekido  '
+      NF_model = 'Duev    '
+      DoStnPos = 0
+      overwrite = 'no  '
+      UVW = 'exact '
+!   Interval between Calc runs (default is every 24 seconds 
+!      for VLBA DiFX correlator).
+      d_interval = 24.D0
+      int_poly = 120
+!   # of Calc epochs in each 2-minute interval
+      epoch2m = (120.0001/d_interval) + 1
+!     write (6,*) ' d_interval, epoch2m: ', d_interval, epoch2m 
+!   # of input calc jobs
+      Numjobs = 0
+!
+!   Find number of parameters on the command line
+       Iar = IARGC()
+!      write(6,*) '  '
+!      write(6,*) ' GETCL/Iar =  ', Iar
+! If no arguments, print out the help menu and terminate 
+       If (Iar .eq. 0) Call USAGE()
+        Iskip = 0
+!
+       Do I = 1, Iar
+          If (Iskip .eq. 1) Then   ! Next argument already read
+           Iskip = 0
+           Go to 100
+          Endif
+        Call GETARG(I,ch_cl)
+!
+         Write (6,*) 'arg ', ch_cl
+         Ic = Index(ch_cl,'.calc')
+         If (Ic .ge. 2) Then
+          Numjobs = Numjobs + 1
+          Ijob = Ic-1
+          Jobname(1:Ijob) = ch_cl(1:Ijob)
+          Icalc = Ijob+5
+          calc_file(1:Icalc) = ch_cl(1:Icalc) 
+            Do Ix = Icalc+1, 128
+             calc_file(Ix:Ix) = ' '
+            Enddo
+          IM_file(1:Ijob) = Jobname(1:Ijob)
+!         IM_file(Ijob+1:Ijob+4) =  '.im'//CHAR(0)
+          IM_file(Ijob+1:Ijob+3) =  '.im'
+            Do Ix = Ijob+4, 128
+             IM_file(Ix:Ix) = ' '
+            Enddo
+          Calcfiles(Numjobs) = calc_file
+          IMfiles(Numjobs) = IM_file
+          Go to 100
+         Endif
+!
+         If (ch_cl(1:2) .eq. '-h') Call USAGE() 
+         If (ch_cl(1:6) .eq. '--help') Call USAGE()
+!        If (ch_cl(1:2) .eq. '-v') Verbose = 1
+!        If (ch_cl(1:9) .eq. '--verbose') Verbose = 1
+!        If (ch_cl(1:2) .eq. '-q') Verbose = -1
+!        If (ch_cl(1:7) .eq. '--quiet') Verbose = -1
+         If (ch_cl(1:2) .eq. '-b') Then
+            Base_mode = 'baseline  '
+            Go to 100
+         Endif
+!        If (ch_cl(1:2) .eq. '-m') Base_mode = 'master-stn'
+         If (ch_cl(1:3) .eq. '-lt') Then
+            L_time = 'solve     '
+            Go to 100
+         Endif
+         If (ch_cl(1:4) .eq. '-dry') Then
+            Atmdr  = 'no-Add-dry'
+            Go to 100
+         Endif
+         If (ch_cl(1:4) .eq. '-wet') Then
+            Atmwt  = 'no-Add-wet'
+            Go to 100
+         Endif
+         If (ch_cl(1:2) .eq. '-S' .or. ch_cl(1:8) .eq. '--Sekido') Then
+            NF_model = 'Sekido  '
+            Go to 100
+         Endif
+         If (ch_cl(1:2) .eq. '-R' .or. ch_cl(1:9) .eq. '--Ranging') Then
+            NF_model = 'Ranging '
+            Go to 100
+         Endif
+         If (ch_cl(1:2) .eq. '-D' .or. ch_cl(1:6) .eq. '--Duev') Then
+            NF_model = 'Duev    '
+            Go to 100
+         Endif
+         If (ch_cl(1:2) .eq. '-s' .or. ch_cl(1:6) .eq. '--stnpos') Then
+            DoStnPos = 1
+            Go to 100
+         Endif
+         If (ch_cl(1:2) .eq. '-f') Then    ! force execution
+            overwrite = 'yes '
+!             write(6,*) ' Overwriting existing .im files! '
+            Go to 100
+         Endif
+         If (ch_cl(1:11) .eq. '-uncorr') Then   ! U,V,W: non-relativistic geometry 
+            UVW = 'uncorr'
+            Go to 100
+         Endif
+         If (ch_cl(1:11) .eq. '-approx') Then   ! U,V,W: geometry with aberration 
+            UVW = 'approx' 
+            Go to 100
+         Endif
+         If (ch_cl(1:11) .eq. '-exact ') Then   ! U,V,W: partial derivatives of delay
+            UVW = 'exact '
+            Go to 100
+         Endif
+         If (ch_cl(1:11) .eq. '-noatmo') Then   ! U,V,W: 'exact' but no atmosphere 
+            UVW = 'noatmo'
+            Go to 100
+         Endif
+!
+!        If (ch_cl(1:2) .eq. '-o') I_out = 1
+!        If (ch_cl(1:3) .eq. '-im') IM_out = 0
+!        If (ch_cl(1:2) .eq. '-e') Then     
+!          Call GETARG(I+1,ch_cl)
+!          Read(ch_cl,*,err=22) isec
+!          If (isec .ge. 1 .and. isec .le. 60) Then
+!37         continue
+!           i1 =  int_poly/isec
+!           if(i1*isec .ne. int_poly) then 
+!            isec = isec-1
+!            go to 37
+!           endif
+!             # of seconds between Calc epochs
+!           d_interval = isec
+!             # of Calc epochs in each 2-minute interval
+!           epoch2m = (120.0001/d_interval) + 1
+!            write (6,*) ' d_interval, epoch2m: ', d_interval, epoch2m 
+!          Else
+!            Write (6,*) 'Calc epoch interval set to default value.'
+!          Endif
+!        Endif
+!
+         If (ch_cl(1:2) .eq. '-v')  Then
+           Call GETARG(I+1,ch_cl)
+           Read(ch_cl,*,err=20) iv
+           Verbose = iv
+           Iskip = 1 
+           Go to 100
+  20        Continue
+           Verbose = 1
+           Go to 100
+         Endif
+!
+         If (ch_cl(1:2) .eq. '-t') Then     
+           Call GETARG(I+1,ch_cl)
+           Read(ch_cl,*,err=22) t_offsec
+           t_offset = t_offsec/86400.D0
+           SpOffset = 'Offset  '
+!          write(6,*) 't_offset ', SpOffset, t_offset
+           Iskip = 1 
+           Go to 100
+         Endif
+! Process all .calc files in the current directory
+         If (ch_cl(1:3) .eq. 'all' .or. ch_cl(1:5) .eq. '--all' .or.    &
+     &       ch_cl(1:1) .eq. '*') Then     
+            If (I .ne. Iar) Then
+             Write(6,*) ' *, all, or --all must be the last command line argument, Quitting!'
+             Stop
+            Endif
+            If (Numjobs .ne. 0) Then
+             Write(6,*) ' Illegal combination of jobs, Quitting! '
+             Stop
+            Endif
+            l_scr = get4unit()
+            Open(unit=l_scr,file='scr_file',status='unknown')
+            Close(unit=l_scr,status='Delete')
+           ierr = SYSTEM('ls *.calc > scr_file')
+            Open(unit=l_scr,file='scr_file',status='old')
+ 60          Continue
+              Read(l_scr,'(A128)',end=70) calc_file 
+               Numjobs = Numjobs + 1 
+               Calcfiles(Numjobs) = calc_file
+               IM_file = calc_file
+                Icm1 = Index(calc_file,'.calc')
+               IM_file(Icm1:Icm1+5) = '.im   '
+               IMfiles(Numjobs) = IM_file
+               Go to 60
+ 70           Continue
+!           Close(unit=l_scr,status='Delete')
+            Close(unit=l_scr)
+           Go to 110
+         Endif
+        
+! If we are here, then there is an unrecognized argument.
+  80    Continue
+        Write (6,*) '  '
+        Write (6,*) ' Unrecognized command line argument: ', ch_cl
+        Write (6,*) ' Quitting!  '
+        Write (6,*) '  '
+        Stop
+!       Call USAGE()
+!
+ 100    Continue
+       Enddo
+ 110   Continue
+!       Write (6,*) '  '
+!       Write (6,*) '  '
+!         Do I = 1, Numjobs
+!            Write (6,*) I,Calcfiles(I),IMfiles(I)
+!         Enddo
+!       Write (6,*) '  '
+!       Write (6,*) '  '
+!
+! Check for no jobs
+        If (Numjobs .eq. 0) Then
+         Write (6,*) '  '
+         Write (6,*) ' No jobs to process, Quitting! '
+         Write (6,*) '  '
+         Stop
+        Endif
+!
+!       If (I_out .eq. 1) Then
+!         calc_out_file(1:Ijob) = Jobname(1:Ijob)
+!         calc_out_file(Ijob+1:Ijob+9) =  '.calc.out'
+!         write (6,*) ' calc_out_file ', calc_out_file
+!       Endif
+!      write(6,*) ' Verbose ', Verbose
+!
+      Return
+ 22   Continue
+       Write (6,*) 'Error reading time offset. Stopping. '
+!      Write (6,*) 'Illegal epoch interval. Stopping. '
+       Stop
+      End
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       SUBROUTINE FixEpoch(JTAG, TAG_SEC)
@@ -1462,8 +1564,8 @@
      &  '                     (Default is to ADD dry atm.)     ',//,    &
      &  '  -wet               DO NOT ADD wet atm delays.      '/,       &
      &  '                     (Default is to ADD wet atm.)     ',//,    &
-!    &  '  -b                 Baseline mode. Do ALL baselines.  ',/,    &
-!    &  '                     (Default is geocenter mode.)     ',//,    &
+     &  '  -b                 Baseline mode. Do ALL baselines.  ',/,    &
+     &  '                     (Default is geocenter mode.)     ',//,    &
 !    &  '  -m                 Master station mode. First       ',/,     &
 !    &  '                     antenna to all others.           ',//,    &
 !    &  '  -e <n>             Epoch interval. Default: 24 seconds. ',/, &

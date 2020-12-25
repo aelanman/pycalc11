@@ -1,4 +1,4 @@
-      SUBROUTINE DRIVR(Iscan,J2m)
+      SUBROUTINE dDRIVR(Iscan,J2m)
       IMPLICIT None
 !
 ! 1.    DRIVR
@@ -31,7 +31,7 @@
 !                        Nominally Calc is run every 24 seconds for the
 !                        difx correlator, and then a fifth degree 
 !                        polynomial is fit to the delays for each 
-!                        minute interval to obtain the correlator
+!                        iinute interval to obtain the correlator
 !                        model. 
 !        3. Base_mode  - If 'geocenter ' mode, first station is always
 !                        the geocenter. If 'baseline  ' mode, will do
@@ -414,6 +414,32 @@
 !      write(6,*) ' !!!! ddrvr/UVW = ', UVW
 !  Pass # of sites to c2poly.i. 
       Numsite = Numsit
+!  Open the output file if requested
+!     If (I_out .eq. 1) Then 
+!      LC = get4unit()
+!      Open(LC, file=calc_out_file, status='new', iostat=ios )
+!      If(ios.ne.0) Then
+!        Write(6,'("File ",A40,"already exists. Stopping.")')           &
+!    &            calc_out_file
+!        Stop
+!      Endif 
+!      If (Atmdr .eq. 'Add-dry   ')                                     &
+!    &     Buf1 = 'Dry atmosphere contributions added to delays.     '
+!      If (Atmdr .eq. 'no-Add-dry')                                     &
+!    &     Buf1 = 'Dry atmosphere contributions NOT added to delays. '
+!      If (Atmwt .eq. 'Add-wet   ')                                     &
+!    &     Buf2 = 'Wet atmosphere contributions added to delays.     '
+!      If (Atmwt .eq. 'no-Add-wet')                                     &
+!    &     Buf2 = 'Wet atmosphere contributions NOT added to delays. '
+!      Write(LC,'("Calc 11 output. ")')
+!      IF (NumSpace .le. 0) Write (LC,'("Using far-field model.")')
+!      If (NumSpace .ge. 1) Write (LC,'("Using Sekido & Fukushima",     &
+!    &                      " near-field model.")') 
+!      If (NumSpace .ge. 1 .and. L_time .eq. 'solve     ')              &
+!    &   Write (LC,'("Solving for light travel time. ")')
+!      Write(LC,'(A50,/,A50)') Buf1, Buf2
+!      Write(LC,'("Calc delays every ",F4.1," seconds.",/)') d_interval
+!     Endif
 !
 !  UTC epoch at start of current 2-minute interval
        JTAG(1) = Intrvl(1,1)    ! year
@@ -428,9 +454,7 @@
 !  moving to the next epoch because it is the most efficient in terms of
 !  CPU time.
 !
-
-      DO Itime = 1, epoch2m                     ! Start of epoch loop
-!
+      DO Itime = 1, Epoch2m                     ! Start of epoch loop
 !  Define UTC for this epoch
         If (Itime .gt. 1) TAG_SEC = TAG_SEC +  d_interval     ! seconds
        IF (TAG_SEC .ge. 59.999999999D0) Call FixEpoch2(JTAG, TAG_SEC)
@@ -466,7 +490,9 @@
 !     for the partial derivative of the UTC time with respect to the atomic
 !     time (DUTCAT).
       CALL ATIME (UTC, XJD, AT, DUTCAT, TT)
-!     write(6,*) ' ATIME: UTC,XJD,AT,DUTCAT,TT ', UTC,XJD,AT,DUTCAT,TT
+!      if (Itime .eq. 1) then
+!      write(6,*) ' ATIME: UTC,XJD,AT,DUTCAT,TT ', UTC,XJD,AT,DUTCAT,TT
+!      endif
 !
 !     Call CTIMG for the coordinate time fraction of the coordinate time day at
 !     site #1 (CT), the partial derivative of the atomic time with respect to
@@ -475,8 +501,12 @@
 !     time (DLPGR).
       CALL CTIMG (AT, TT, CFSITE, SITLON, UTC, XJD, CT, DATDCT, DLPGR,  &
      &     TDB, TDBg )
-!     write(6,*) ' CTIME: CFSITE,SITLON,CT,DATDCT,DLPGR,TDB,TDBg ',     &
-!    &            CFSITE,SITLON,CT,DATDCT,DLPGR,TDB,TDBg
+!      if (Itime .eq. 1) then
+!     write(6,*) ' CTIME IN : AT,TT ',     &
+!     &            AT, TT 
+!     write(6,*) ' CTIME OUT: CFSITE,SITLON,CT,DATDCT,DLPGR,TDB,TDBg ',     &
+!     &            CFSITE,SITLON,CT,DATDCT,DLPGR,TDB,TDBg
+!      endif
 !
 !     Compute epoch and compare with previous observation. If same, set
 !     TSKIP=1, otherwise TSKIP=0. If TSKIP=1, then we can skip many steps in
@@ -496,7 +526,10 @@
 !     (except Pluto) barycentric and geocentric positions and velocities.
 !     The solar system info comes from the DE421 JPL Ephemeris.
       CALL PEP (XJD, TDBg, TSKIP, EARTH, SUN, XMOON)
-!     write(6,*) ' PEP: EARTH,SUN,XMOON ', EARTH,SUN,XMOON
+!      if (Itime .eq. 1) then
+!        write(6,*) ' PEP in ', XJD, TDBg, TSKIP
+!        write(6,*) ' PEP: EARTH,SUN,XMOON ', EARTH,SUN,XMOON
+!      endif
 !
 !     Call NUTFA before NUTG and before UT1G to get epoch in centuries and
 !     the fundamental arguments for the nutation series.
@@ -659,7 +692,7 @@
       CALL ROT2K (CFLAT, CFLON, CFSITE, CFSITN, R2K6, EPLATP, EPLATV,   &
      &     EPLONP, EPLONV, EPSITN, SITEA, USITEP, USITEV)
 !     write(6,237) USITEP, USITEV, SITEA
- 237  format(' USITEP, USITEV, SITEA',/,6(3D30.16,/))
+! 237  format(' USITEP, USITEV, SITEA',/,6(3D30.16,/))
 !
 !     Call ETDG for the corrections to the J2000 site position vectors (TIDEP)
 !     and velocity vectors (TIDEV) due to Earth tide effects.
@@ -699,7 +732,6 @@
 !
        If (Isrc .eq. 1) Isource = PointingSrc
        If (Isrc .gt. 1) Isource = PhCntr(Isrc-1) 
-!       write(6,*) 'ddrvr: Isrc, Isource ', Isrc, Isource
 
 !
 !     Call STRG for the J2000.0 unit vector in the direction of the
@@ -891,7 +923,6 @@
       Endif
 !      
 !    Station 2:
-
        ATMdryd_f(IS2,Itime,Istation1,(Istation2-1),Isrc) = DATMC(2,1)
        ATMdryr_f(IS2,Itime,Istation1,(Istation2-1),Isrc) = DATMC(2,2)
        ATMwetd_f(IS2,Itime,Istation1,(Istation2-1),Isrc) = Datmc_wmf(2,1)
@@ -940,13 +971,12 @@
 !     including the contributions and partials. This now includes only
 !     the Consensus relativity model computations:
 !!!   IF (NumSpace .le. 0)                                              &
-      IF (Near_Far .eq. 'Far-field ')  THEN
-       Call CONSEN ( DATMC, EARTH, EPBASE, SITEP1, SITEV1,              &
+      IF (Near_Far .eq. 'Far-field ')                                   &
+     & Call CONSEN ( DATMC, EARTH, EPBASE, SITEP1, SITEV1,              &
      &      SITEA, SUN, XMOON, STAR, K_EWNS, Datmc_h_EWNS,Datmc_w_EWNS, &
      &      tg2_tg1, dtg2_tg1,                                          &
      &      delta_t_grav, d_delta_t_grav, delta_t_grav_Sun,             &
-     &      d_delta_t_grav_Sun )
-      Endif
+     &      d_delta_t_grav_Sun )    
 !
 !       write(6,*) 'ddrvr3/R1mag,R1magdt ',  R1mag,R1magdt
 !       write(6,*) 'ddrvr3/R2mag,R2magdt ',  R2mag,R2magdt
@@ -1000,8 +1030,9 @@
 !
       ENDIF
 !
+!
 !   Load delay and rate arrays
-!      write(6,*) 'tg2_tg1,dtg2_tg1 ', tg2_tg1, dtg2_tg1
+!        write(6, *) Itime, Istation1, Istation2, Isrc, tg2_tg1
         Delay_f(Itime,Istation1,(Istation2-1),Isrc) = tg2_tg1 
          Rate_f(Itime,Istation1,(Istation2-1),Isrc) = dtg2_tg1
 !        write(6,*) 'ddrvr: ', Iscan,J2m,Itime,Istation1,(Istation2-1), &
