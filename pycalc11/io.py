@@ -92,7 +92,7 @@ def parse_calc(name):
     t = None  # table being created.
     n_kind = None  # number of elements to expect.
     with open(name) as im:
-        while line := im.readline():
+        for line in im.readlines():
             # Separate out keyword and its value.
             k_list, v = key_value(line)
 
@@ -178,7 +178,7 @@ def parse_im(name):
     n_kind = n_src = n_ant = order = poly = None
     scan_poly = False
     with open(name) as im:
-        while line := im.readline():
+        for line in im.readlines():
             # Separate out keyword and its value.
             k_list, v = key_value(line)
 
