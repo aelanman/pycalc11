@@ -4,10 +4,14 @@ from collections import defaultdict
 import numpy as np
 from numpy.testing import assert_allclose
 from astropy import constants as const
+from astropy import coordinates as ac
+from astropy.time import Time
 from astropy.utils.data import get_pkg_data_filename
 
-from calc11.io import parse_im
-from calc11 import calc11
+from pycalc11.io import parse_im
+from pycalc11.driver import run_calc
+from pycalc11.calcfile import make_calc
+from pycalc11 import calc11
 
 
 CRAB_CALC = get_pkg_data_filename(os.path.join(
@@ -206,3 +210,41 @@ class TestFromCalcFile(CALCTestBase):
         assert_allclose(calc11.out_c.delay_f[-1, 0, :2, 0],
                         -1e-6*self.im['scan'][0]['delay'][1, 0, :, 0],
                         atol=0, rtol=4e-16)
+
+
+def test_delay_calc(tmpdir):
+    # Run with and without using a .calc file as intermediary.
+    # Compare delays
+
+    time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
+    gbo_loc = ac.EarthLocation.of_site("GBT")
+    chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
+
+    nsrcs = 10
+    srcs = ac.SkyCoord(
+        az=np.random.uniform(0, 2 * np.pi, nsrcs),
+        alt=np.random.uniform(0, np.pi / 2, nsrcs),
+        unit='rad',
+        frame='altaz',
+        obstime=time,
+        location=gbo_loc
+    )
+    srcs = srcs.transform_to(ac.ICRS)
+    
+    duration_min = 60 * 8
+    
+    telescope_positions = [chime_loc, gbo_loc]
+    telescope_names = ['chime', 'gbo']
+    source_coords = [s for s in srcs]
+    source_names = [f"src{si}" for si in range(nsrcs)]
+    duration_min = 60 * 8
+
+    calcfile = str(tmpdir.join('temp.calc'))
+    make_calc(telescope_positions, telescope_names, source_coords,
+              source_names, time, duration_min, ofile_name=calcfile)
+    
+    
+    delays0 = run_calc(telescope_positions, telescope_names, source_coords, source_names, time, duration_min).copy()
+    delays1 = run_calc(calc_file_name=calcfile)
+    
+    assert np.allclose(delays0, delays1)
