@@ -54,8 +54,7 @@ def get_extensions():
                  .replace('@de421_file@', DE421_FILE_NAME)
                  for line in fr.readlines()])
 
-    if not (os.path.isfile(F90_COMBINED)
-            and all(newer(F90_COMBINED, fn) for fn in F_SOURCES + INCLUDES)):
+    if any(newer(fn, F90_COMBINED) for fn in F_SOURCES + INCLUDES):
         print(f'Creating combined f90 file {F90_COMBINED}')
         # Files do not get automatically recognized as f90, so be blunt and
         # get all of them.
