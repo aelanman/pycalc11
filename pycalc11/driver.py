@@ -152,7 +152,7 @@ class Calc11Interface:
 ci = Calc11Interface()
 
 
-def run_calc(telescope_positions=None, telescope_names=None, source_coords=None,
+def get_delay(telescope_positions=None, telescope_names=None, source_coords=None,
              source_names=None, time=None, duration_min=None, calc_file_name=None):
     """
     If calc_file_name is given, the other keywords are not required.

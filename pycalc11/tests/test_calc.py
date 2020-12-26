@@ -9,7 +9,7 @@ from astropy.time import Time
 from astropy.utils.data import get_pkg_data_filename
 
 from pycalc11.io import parse_im
-from pycalc11.driver import run_calc
+from pycalc11.driver import get_delay
 from pycalc11.calcfile import make_calc
 from pycalc11 import calc11
 
@@ -244,7 +244,7 @@ def test_delay_calc(tmpdir):
               source_names, time, duration_min, ofile_name=calcfile)
     
     
-    delays0 = run_calc(telescope_positions, telescope_names, source_coords, source_names, time, duration_min).copy()
-    delays1 = run_calc(calc_file_name=calcfile)
+    delays0 = get_delay(telescope_positions, telescope_names, source_coords, source_names, time, duration_min).copy()
+    delays1 = get_delay(calc_file_name=calcfile)
     
     assert np.allclose(delays0, delays1)
