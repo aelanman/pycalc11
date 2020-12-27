@@ -9,7 +9,7 @@ from astropy.time import Time
 from astropy.utils.data import get_pkg_data_filename
 
 from pycalc11.io import parse_im
-from pycalc11.driver import get_delay
+from pycalc11.funcs import get_delay
 from pycalc11.calcfile import make_calc
 from pycalc11 import calc11
 
