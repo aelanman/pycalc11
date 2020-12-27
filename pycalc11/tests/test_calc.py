@@ -177,7 +177,7 @@ class TestFromCalcFile(CALCTestBase):
         assert calc11.contrl.d_interval == 24.
 
     def test_dstart(self):
-        self.do_calc(dstart=(1, 1))
+        self.do_calc(dstart=(1, 1), dget_input=(1,))
         assert np.all(calc11.sitcm.sitxyz[:, 0] == 0.)  # Center of Earth
         assert_allclose(calc11.sitcm.sitxyz[:, 1],
                         [-2059159.52756903,
