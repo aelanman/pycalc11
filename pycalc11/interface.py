@@ -145,3 +145,4 @@ def reset():
 
 
 delay = calc.out_c.delay_f
+delay_rate = calc.out_c.rate_f

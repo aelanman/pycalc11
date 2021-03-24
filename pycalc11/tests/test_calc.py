@@ -1,4 +1,5 @@
 import os
+import pytest
 from collections import defaultdict
 
 import numpy as np
@@ -18,6 +19,45 @@ CRAB_CALC = get_pkg_data_filename(os.path.join(
     'data', 'B0531+21_CHIME_ARO10m_59153.45269019096.calc'))
 CRAB_IM = get_pkg_data_filename(os.path.join(
     'data', 'B0531+21_CHIME_ARO10m_59153.45269019096.im'))
+
+@pytest.fixture
+def gbt_chime_setup():
+    # TODO use this
+    time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
+    gbo_loc = ac.EarthLocation.of_site("GBT")
+    chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
+
+    nsrcs = 10
+    srcs = ac.SkyCoord(
+        az=np.random.uniform(0, 2 * np.pi, nsrcs),
+        alt=np.random.uniform(0, np.pi / 2, nsrcs),
+        unit='rad',
+        frame='altaz',
+        obstime=time,
+        location=gbo_loc
+    )
+    srcs = srcs.transform_to(ac.ICRS)
+
+    duration_min = 60 * 8
+
+    telescope_positions = [chime_loc, gbo_loc]
+    telescope_names = ['chime', 'gbo']
+    source_coords = [s for s in srcs]
+    source_names = [f"src{si}" for si in range(nsrcs)]
+    duration_min = 60 * 8
+
+
+    kwargs = {
+        "telescope_positions": telescope_positions,
+        "telescope_names": telescope_names,
+        "source_coords": source_coords,
+        "source_names": source_names,
+        "time": time,
+        "duration_min": duration_min,
+    }
+
+    return kwargs
+
 
 
 def get_initialized(calc):
@@ -212,39 +252,13 @@ class TestFromCalcFile(CALCTestBase):
                         atol=0, rtol=4e-16)
 
 
-def test_delay_calc(tmpdir):
+def test_delay_calc(tmpdir, gbt_chime_setup):
     # Run with and without using a .calc file as intermediary.
-    # Compare delays
-
-    time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
-    gbo_loc = ac.EarthLocation.of_site("GBT")
-    chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
-
-    nsrcs = 10
-    srcs = ac.SkyCoord(
-        az=np.random.uniform(0, 2 * np.pi, nsrcs),
-        alt=np.random.uniform(0, np.pi / 2, nsrcs),
-        unit='rad',
-        frame='altaz',
-        obstime=time,
-        location=gbo_loc
-    )
-    srcs = srcs.transform_to(ac.ICRS)
-    
-    duration_min = 60 * 8
-    
-    telescope_positions = [chime_loc, gbo_loc]
-    telescope_names = ['chime', 'gbo']
-    source_coords = [s for s in srcs]
-    source_names = [f"src{si}" for si in range(nsrcs)]
-    duration_min = 60 * 8
-
+    # Compare delay arrays
     calcfile = str(tmpdir.join('temp.calc'))
-    make_calc(telescope_positions, telescope_names, source_coords,
-              source_names, time, duration_min, ofile_name=calcfile)
-    
-    
-    delays0 = get_delay(telescope_positions, telescope_names, source_coords, source_names, time, duration_min).copy()
+    make_calc(**gbt_chime_setup, ofile_name=calcfile)
+
+    delays0 = get_delay(**gbt_chime_setup).copy()
     delays1 = get_delay(calc_file_name=calcfile)
-    
+
     assert np.allclose(delays0, delays1)
