@@ -49,12 +49,18 @@
 !
       INCLUDE 'put2s.i'
 !       Variables from:
-!        1. ELEV(2,2) - The elevation angle of the source corrrected for
-!                       aberration and its CT time derivative at each
-!                       site. (rad,rad/sec)
-!        2. AZ(2,2)   - The azimuth angle of the source corrrected for
-!                       aberration and its CT time derivative at each
-!                       site. (rad,rad/sec)
+!        1. ELEV(2,2)  - The elevation angle of the source corrrected for
+!                        aberration and its CT time derivative at each
+!                        site. (rad,rad/sec)
+!        2. AZ(2,2)    - The azimuth angle of the source corrrected for
+!                        aberration and its CT time derivative at each
+!                        site. (rad,rad/sec)
+!        3. DSTRP(2,2) - THE PARTIAL DERIVATIVES OF THE DELAY AND THE DELAY
+!                        RATE WITH RESPECT TO THE SOURCE RIGHT ASCENSION AND
+!                        DECLINATION. (sec/rad, sec/sec-rad) THE FIRST INDEX
+!                        RUNS OVER RA AND DEC, THE SECOND RUNS OVER DELAY AND
+!                        DELAY RATE.
+
 !
        INCLUDE 'cmxut11.i'
 !            Variables 'to':
@@ -1038,6 +1044,14 @@
 !        write(6,*) 'ddrvr: ', Iscan,J2m,Itime,Istation1,(Istation2-1), &
 !    &     Isrc, Delay_f(Itime,Istation1,(Istation2-1),Isrc),DATMC(1,1), DATMC(2,1) 
 !
+!   Load partial derivatives of delay and delay rate.
+      Do J=1,2
+       Do I=1,2
+        Partials_f(I,J, Itime, Istation1, (Istation2-1), Isrc) =        &
+     &    DSTRP(I,J)
+       enddo
+      enddo
+
        If (Atmdr .eq. 'Add-dry   ')  Then
         Delay_f(Itime,Istation1,(Istation2-1),Isrc)  =                  &
      &     Delay_f(Itime,Istation1,(Istation2-1),Isrc) +                &

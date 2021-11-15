@@ -27,6 +27,7 @@
 !
       Real*8 Delay_f(Max_Epochs,Nstation1,Nstation2,Max_Source),          &
      &   Rate_f(Max_Epochs,Nstation1,Nstation2,Max_Source),               &
+     &   Partials_f(2,2,Max_Epochs,Nstation1,Nstation2,Max_Source),         &
      &   Atmdryd_f(IB,Max_Epochs,Nstation1,Nstation2,Max_Source),         &
      &   Atmdryr_f(IB,Max_Epochs,Nstation1,Nstation2,Max_Source),         &
      &   Atmwetd_f(IB,Max_Epochs,Nstation1,Nstation2,Max_Source),         &
@@ -47,7 +48,7 @@
       Integer*4 Numsite, Iymdhms_f(Max_Epochs,6), Numbaseline,          &
      &          NumPhCenter 
 !
-      COMMON / OUT_C /Delay_f, Rate_f, Atmdryd_f, Atmdryr_f,            &
+      COMMON / OUT_C /Delay_f, Rate_f, Partials_f, Atmdryd_f, Atmdryr_f,  &
      &       Atmwetd_f, Atmwetr_f, Ubase_f, Vbase_f, Wbase_f,           &
      &       El_f, Az_f, StaX_f, StaY_f, StaZ_f,                        &
      &       Iymdhms_f, Numsite, Numbaseline, NumPhCenter,              &

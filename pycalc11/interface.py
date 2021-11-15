@@ -39,7 +39,7 @@ def run(**kwargs):
 
 def set_telescopes(telescope_positions, telescope_names):
     n_ants = len(telescope_names)
-    calc.sitcm.numsit = n_ants
+    calc.sitcm.numsit = n_ants + 1
 
     # Zeroth site is geocenter
     # TODO -- Only set it to geocenter if in "geocenter" mode.
@@ -146,3 +146,10 @@ def reset():
 
 delay = calc.out_c.delay_f
 delay_rate = calc.out_c.rate_f
+partials = calc.out_c.partials_f
+
+def get_nsrcs():
+    return calc.calc_input.numphcntr
+
+def get_nants():
+    return calc.sitcm.numsit - 1

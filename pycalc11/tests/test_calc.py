@@ -10,7 +10,7 @@ from astropy.time import Time
 from astropy.utils.data import get_pkg_data_filename
 
 from pycalc11.io import parse_im
-from pycalc11.funcs import get_delay
+from pycalc11.funcs import get_delay, get_partials
 from pycalc11.calcfile import make_calc
 from pycalc11 import calc11
 
@@ -22,7 +22,6 @@ CRAB_IM = get_pkg_data_filename(os.path.join(
 
 @pytest.fixture
 def gbt_chime_setup():
-    # TODO use this
     time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
     gbo_loc = ac.EarthLocation.of_site("GBT")
     chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
@@ -260,5 +259,41 @@ def test_delay_calc(tmpdir, gbt_chime_setup):
 
     delays0 = get_delay(**gbt_chime_setup).copy()
     delays1 = get_delay(calc_file_name=calcfile)
-
     assert np.allclose(delays0, delays1)
+
+
+def test_partials_calc(tmpdir, gbt_chime_setup):
+    # Get partial derivatives. Compare to approx calculation.
+
+    time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
+
+    dth = np.radians(1/3600)    # 1 arcsec
+
+    c_ra = np.pi/6 
+    c_dec = np.pi/4
+
+    srcs = ac.SkyCoord(
+        ra=[c_ra, c_ra, c_ra, c_ra - dth, c_ra + dth],
+        dec=[c_dec, c_dec - dth, c_dec + dth, c_dec, c_dec],
+        unit='rad', frame='icrs'
+    )
+    src_names = np.arange(srcs.size).astype(str)
+
+    params = gbt_chime_setup
+    params['source_coords'] = srcs
+    params['source_names'] = src_names
+
+    delays = get_delay(**params).copy()
+    partials = get_partials(**params).copy()
+
+    # Partial derivatives at the zeroth source position (our test point)
+    partials = partials[..., 0]
+
+    dtau_dra = (delays[..., 4] - delays[..., 3]) / (2 * dth)
+    dtau_ddec = (delays[..., 2] - delays[..., 1]) / (2 * dth)
+
+    # dtau_dra and dtau_ddec axes = (time, ant1, ant2) where ant1 is just geocenter
+    # partials axes = (ra or dec, D or DR, time, ant1, ant2)
+
+    assert np.allclose(dtau_dra[:, 0, :], partials[0, 0, :, 0, :], atol=1e-6)
+    assert np.allclose(dtau_ddec[:, 0, :], partials[1, 0, :, 0, :], atol=1e-6)

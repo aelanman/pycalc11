@@ -8,6 +8,7 @@ def _get_quantity(quantity,
     """
     If calc_file_name is given, the other keywords are not required.
     """
+    # TODO Option to only rerun if something changed
     ci.reset()
     if calc_file_name is not None:
         # Do setup with calcfile.
@@ -27,22 +28,34 @@ def _get_quantity(quantity,
 
 
 def get_delay(**kwargs):
+    # Returned axes: (time, ant1, ant2, src)
     # Same keyword args as _get_quantity
     delay = _get_quantity('delay', **kwargs)
-    nsrcs = ci.calc.calc_input.numphcntr
-    nants = len([s for s in ci.calc.calc_input.sites if s != b''])
+    nsrcs = ci.get_nsrcs()
+    nants = ci.get_nants()
 
     # Cut back on long axes to just those used.
-    delay = delay[:, :nants, :nants, :nsrcs+1]
+    # 0th on source axis is pointing center
+    # 1st and on are phase centers
+    delay = delay[:, :, :nants, 1:nsrcs+1]
     return delay
 
 
 def get_delay_rate(**kwargs):
     # Same keyword args as _get_quantity
     delay_rate = _get_quantity('delay_rate', **kwargs)
+    nsrcs = ci.get_nsrcs()
+    nants = ci.get_nants()
 
-    nsrcs = ci.calc.calc_input.numphcntr
-    nants = len([s for s in ci.calc.calc_input.sites if s != b''])
-
-    delay_rate = delay_rate[:, :nants, :nants, :nsrcs+1]
+    delay_rate = delay_rate[:, :, :nants, 1:nsrcs+1]
     return delay_rate
+
+
+def get_partials(**kwargs):
+    # Returned axes: (ra/dec, d/dr, time, ant1, ant2, src))
+    # Zeroth axis: (0) d/dra, (1) d/ddec
+    # First axis: (0) delay, (1) delay rate
+    partials = _get_quantity('partials', **kwargs)
+    nsrcs = ci.get_nsrcs()
+    nants = ci.get_nants()
+    return partials[..., :nants, 1:nsrcs+1]
