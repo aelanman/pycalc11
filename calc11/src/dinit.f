@@ -149,6 +149,45 @@
       END
 !
 !*************************************************************************
+      SUBROUTINE allocOutArrays(Nepoch, Nstat1, Nstat2, Nsrc)
+      use outputs
+      IMPLICIT None
+
+      INCLUDE "d_input.i"
+!           Input variables:
+!             1) Base_mode - String identifying baseline or geocenter
+!             mode
+
+      ! IB = 1 for geocenter mode, 2 for baseline mode
+
+      Integer*4 Nepoch, Nstat1, Nstat2, Nsrc, IB
+      IB = 1
+      if (Base_mode .eq. 'baseline  ') THEN
+           IB = 2
+      ENDIF
+
+      if (ALLOCATED(Delay_f)) THEN
+        DEALLOCATE(Delay_f, Rate_f, Ubase_f, Vbase_f, Wbase_f)
+        DEALLOCATE(Atmdryd_f,Atmdryr_f, Atmwetd_f, Atmwetr_f, El_f,       &
+     &             Az_f, StaX_f, StaY_f, StaZ_f)
+        DEALLOCATE(Partials_f, Iymdhms_f)
+      ENDIF
+
+! Allocate arrays that need to be declared.
+      ALLOCATE(Delay_f(Nepoch,Nstat1,Nstat2,Nsrc), source=real(0.0, 8))
+      ALLOCATE(Rate_f, Ubase_f, Vbase_f, Wbase_f, mold=Delay_f)
+      ALLOCATE(Atmdryd_f(IB,Nepoch,Nstat1,Nstat2,Nsrc),                   &
+     &          source=real(0.0, 8))
+      ALLOCATE(Atmdryr_f, Atmwetd_f, Atmwetr_f, El_f, Az_f, StaX_f,       &
+     &         StaY_f, StaZ_f, mold=Atmdryd_f)
+      ALLOCATE(Partials_f(2,2,Nepoch,Nstat1,Nstat2,Nsrc),                 &
+     &          source=real(0.0,8))
+      ALLOCATE(Iymdhms_f(Nepoch, 6), source=0)
+
+      END SUBROUTINE allocOutArrays
+
+
+!*************************************************************************
       SUBROUTINE dSITI(Kjob)
       IMPLICIT None
 !

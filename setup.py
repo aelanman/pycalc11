@@ -63,7 +63,7 @@ def get_extensions():
             for f in F_SOURCES:
                 with open(os.path.join(SRCDIR, f)) as fh:
                     f90file.writelines(fh.readlines())
-
+    import sys; sys.exit()
     calc_ext = Extension(
         name="pycalc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,

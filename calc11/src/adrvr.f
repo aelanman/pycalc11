@@ -1,4 +1,5 @@
-      SUBROUTINE dDRIVR(Iscan,J2m)
+      SUBROUTINE aDRIVR(Iscan,J2m)
+      use outputs
       IMPLICIT None
 !
 ! 1.    DRIVR
@@ -91,7 +92,7 @@
 !           Variables 'from' :
 !             1. CONVD -
 !
-       INCLUDE 'c2poly.i'
+!       INCLUDE 'c2poly.i'
 !
 !
 ! 1.2.3 PROGRAM SPECIFICATIONS -
@@ -417,37 +418,13 @@
 !     other subroutines may be considered utilities and either superseed or
 !     incorporate many present PEP routines.
 !
-!      write(6,*) ' !!!! ddrvr/UVW = ', UVW
 !  Pass # of sites to c2poly.i. 
       Numsite = Numsit
-!  Open the output file if requested
-!     If (I_out .eq. 1) Then 
-!      LC = get4unit()
-!      Open(LC, file=calc_out_file, status='new', iostat=ios )
-!      If(ios.ne.0) Then
-!        Write(6,'("File ",A40,"already exists. Stopping.")')           &
-!    &            calc_out_file
-!        Stop
-!      Endif 
-!      If (Atmdr .eq. 'Add-dry   ')                                     &
-!    &     Buf1 = 'Dry atmosphere contributions added to delays.     '
-!      If (Atmdr .eq. 'no-Add-dry')                                     &
-!    &     Buf1 = 'Dry atmosphere contributions NOT added to delays. '
-!      If (Atmwt .eq. 'Add-wet   ')                                     &
-!    &     Buf2 = 'Wet atmosphere contributions added to delays.     '
-!      If (Atmwt .eq. 'no-Add-wet')                                     &
-!    &     Buf2 = 'Wet atmosphere contributions NOT added to delays. '
-!      Write(LC,'("Calc 11 output. ")')
-!      IF (NumSpace .le. 0) Write (LC,'("Using far-field model.")')
-!      If (NumSpace .ge. 1) Write (LC,'("Using Sekido & Fukushima",     &
-!    &                      " near-field model.")') 
-!      If (NumSpace .ge. 1 .and. L_time .eq. 'solve     ')              &
-!    &   Write (LC,'("Solving for light travel time. ")')
-!      Write(LC,'(A50,/,A50)') Buf1, Buf2
-!      Write(LC,'("Calc delays every ",F4.1," seconds.",/)') d_interval
-!     Endif
 !
-!  UTC epoch at start of current 2-minute interval
+
+!  Allocate allocatable arrays
+      
+!  UTC epoch of start
        JTAG(1) = Intrvl(1,1)    ! year
        JTAG(2) = Intrvl(2,1)    ! month
        JTAG(3) = Intrvl(3,1)    ! day 
@@ -461,6 +438,7 @@
 !  CPU time.
 !
       DO Itime = 1, Epoch2m                     ! Start of epoch loop
+
 !  Define UTC for this epoch
         If (Itime .gt. 1) TAG_SEC = TAG_SEC +  d_interval     ! seconds
        IF (TAG_SEC .ge. 59.999999999D0) Call FixEpoch2(JTAG, TAG_SEC)
@@ -473,10 +451,7 @@
       IM  = JTAG(2)
       ID  = JTAG(3)
       XJD = JDY2K(IYY,IM,ID)
-!     write(6,*) '   '
-!     write(6,'("ddrvr: JTAG,TAGSEC,XJD = ",5I5,F5.1,F12.2)')         &
-!    &      JTAG,TAGSEC,XJD
-!     write(6,*) '   '
+
 !  Fill output time array
        Iymdhms_f(Itime,1) = JTAG(1)
        Iymdhms_f(Itime,2) = JTAG(2)
@@ -489,8 +464,6 @@
       UTC = ( DFLOAT ( JTAG(4) ) * 3600.D0                              &
      &      + DFLOAT ( JTAG(5) ) * 60.D0                                &
      &      + TAGSEC ) / 86400.D0
-!
-!     write(6,'("ddrvr: UTC ",F15.10)')  UTC
 !
 !     Call ATIME for the atomic time fraction of the atomic time day (AT) and
 !     for the partial derivative of the UTC time with respect to the atomic
@@ -661,13 +634,8 @@
        Baseline(2) = Sites(Istation2)
 !    Assign a unique baseline index number
        IndexB = IndexB + 1
-       Site1(IndexB,Itime) = Baseline(1)
-       Site2(IndexB,Itime) = Baseline(2)
-        Numbaseline = IndexB
+       Numbaseline = IndexB
 !
-!     write(6,*) '   '
-!     write(6,'(5I5,F5.1,2X,A8,1X,A8)') JTAG, TAGSEC, Baseline(1),      &
-!    &      Baseline(2)
 !
 !     Call SITG for the geographical site data. SITG provides the following
 !     geocentric information for each observing site: the antenna axis offsets

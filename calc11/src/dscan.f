@@ -30,7 +30,6 @@
 !           Input variables:
 !             1) calc_file_name - Job file '.calc' file name.
 !
-      INCLUDE 'c2poly.i'
 !
 !
 !   Program specifications -
