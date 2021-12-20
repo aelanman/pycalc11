@@ -1,4 +1,5 @@
       Subroutine dscan(Iscan, Kjob)  
+      use srcmod
       implicit none
 !
 !      Common blocks used -
@@ -7,17 +8,17 @@
 !       Variables 'to':
 !         1. ILUOUT - A flag controlling output.
 !
-      INCLUDE 'cmxst11.i'
+!      INCLUDE 'cmxst11.i'
 !       Variables 'to':
 !         1. NUMSIT    - The total number of sites in the data base.
 !         2. Zero_site - The site number of the site at the geocenter.
 !
-      INCLUDE 'cmxsr11.i'
+!      INCLUDE 'cmxsr11.i'
 !       Variables 'to':
 !         1. NUMSTR - The total number of stars (radio sources) in the
 !                     data base.
-      Character*20 SrcName(MAX_ARC_SRC)
-      Equivalence (LNSTAR(1,1), SrcName(1))
+!      Character*20 SrcName(MAX_ARC_SRC)
+!      Equivalence (LNSTAR(1,1), SrcName(1))
 !
       INCLUDE 'cmxut11.i'
 !       Variables 'to':

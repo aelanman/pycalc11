@@ -36,38 +36,54 @@ def run(**kwargs):
     for routine, args in kwargs.items():
         getattr(calc, routine)(*args)
 
+def set_geocenter_telescope():
+    calc.sitcm.numsit += 1
+    calc.calc_input.sites[0] = "GEOCENTR"
+    calc.calc_input.axis[0] = "AZEL"
+    calc.sitcm.sitaxo[0] = 0.0    # Axis offset
+    calc.sitcm.sitxyz[0, 0] = 0
+    calc.sitcm.sitxyz[1, 0] = 0
+    calc.sitcm.sitxyz[2, 0] = 0
 
 def set_telescopes(telescope_positions, telescope_names):
     n_ants = len(telescope_names)
-    calc.sitcm.numsit = n_ants + 1
+    calc.sitcm.numsit += n_ants
 
     # Zeroth site is geocenter
     # TODO -- Only set it to geocenter if in "geocenter" mode.
-    #         (Allow for baseline mode.)
-    tnames = copy.deepcopy(telescope_names)
-    tpos = copy.deepcopy(telescope_positions)
-    tnames.insert(0, "GEOCENTR")
-    tpos.insert(0, ac.EarthLocation.from_geocentric(0, 0, 0, unit='m'))
-    for ti in range(n_ants + 1):
-        calc.calc_input.sites[ti] = tnames[ti].upper()
-        calc.calc_input.axis[ti] = "AZEL"
-        calc.sitcm.sitaxo[ti] = 0.0    # Axis offset
-        calc.sitcm.sitxyz[0, ti] = tpos[ti].x.to_value('m')
-        calc.sitcm.sitxyz[1, ti] = tpos[ti].y.to_value('m')
-        calc.sitcm.sitxyz[2, ti] = tpos[ti].z.to_value('m')
+    #         (i.e., Allow for baseline mode.)
+    set_geocenter_telescope()
+    tnames = telescope_names
+    tpos = telescope_positions
+    for ti in range(n_ants):
+        calc.calc_input.sites[ti+1] = tnames[ti].upper()
+        calc.calc_input.axis[ti+1] = "AZEL"
+        calc.sitcm.sitaxo[ti+1] = 0.0    # Axis offset
+        calc.sitcm.sitxyz[0, ti+1] = tpos[ti].x.to_value('m')
+        calc.sitcm.sitxyz[1, ti+1] = tpos[ti].y.to_value('m')
+        calc.sitcm.sitxyz[2, ti+1] = tpos[ti].z.to_value('m')
 
 
 def set_sources(source_coords, source_names):
-    if len(source_names) > 300:
-        raise ValueError("No more than 300 sources may be used at once.")
-    calc.strcm.numstr = len(source_names)
-    for si, (coord, name) in enumerate(zip(source_coords, source_names)):
-        calc.strcm.radec[:, si] = [coord.ra.rad, coord.dec.rad]
-
     Nsrc = len(source_names)
+    calc.alloc_source_arrays(Nsrc+1)
+    calc.srcmod.numstr = len(source_names)
+    for si, (coord, name) in enumerate(zip(source_coords, source_names)):
+        calc.srcmod.radec[:, si] = [coord.ra.rad, coord.dec.rad]
+        calc.srcmod.lnstar[:, si] = np.frombuffer(bytes(name.ljust(20), encoding='utf-8'), dtype=np.int16)
     calc.calc_input.numphcntr = Nsrc
     calc.calc_input.phcntr[:Nsrc] = range(1, Nsrc+1)
     calc.calc_input.phcntr[Nsrc:] = -1
+
+    # The call below causes a variety of different errors on shutdown:
+    #   > corrupted_size vs. prev_size
+    #   > segmentation fault
+    #   > double free or corruption (out)
+    #   > (partway through source list) realloc(): invalid old size
+    # calc doesn't actually use source names in difx mode, except in dscan when handling spacecraft.
+
+    # Fixing this is a TODO for the future.
+    #calc.set_srcname(Nsrc)
 
 
 def set_scan(time, duration_min):
@@ -144,12 +160,17 @@ def reset():
         calc.__dict__[key] = part
 
 
-delay = calc.out_c.delay_f
-delay_rate = calc.out_c.rate_f
-partials = calc.out_c.partials_f
+def delay():
+    return calc.outputs.delay_f
 
-def get_nsrcs():
+def delay_rate():
+    return calc.outputs.rate_f
+
+def partials():
+    return calc.outputs.partials_f
+
+def nsrcs():
     return calc.calc_input.numphcntr
 
-def get_nants():
+def nants():
     return calc.sitcm.numsit - 1

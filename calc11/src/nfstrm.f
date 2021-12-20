@@ -3,6 +3,7 @@
      &           R1dt, R1mag, R1magdt, R2, R2dt, R2mag, R2magdt,STARff, &
      &           R1_TDB, R2_TDB, R1mag_TDB, R2mag_TDB, Site2_TDB,       &
      &           Sourc20)
+      use srcmod
       IMPLICIT None
 !
 ! 4.1.1 Near-field version of the STAR Module. 
@@ -23,7 +24,7 @@
 !
 ! 4.2.2 COMMON BLOCKS USED -
 !
-      INCLUDE 'cmxsr11.i'
+!      INCLUDE 'cmxsr11.i'
 !       VARIABLES 'FROM':
 !          1. LNSTAR(10,MAX_ARC_SRC)- THE EIGHT ALPHANUMERIC CHARACTER NAMES
 !                                     OF THE STARS IN THE STAR CATALOG.
@@ -119,9 +120,9 @@
       Integer*4 N, NN, IM, ID, Ieph, I, J, Isource, Ierr4, I4, MJDx
 !     Integer*2 NDO(3), KERR
 !
-      Character*20 SrcName(MAX_ARC_SRC), SName, Sourc20
-      Equivalence (LNSTAR(1,1), SrcName(1))
-      Equivalence (LSTRNM(1), SName)
+      Character*20 SName, Sourc20
+!      Equivalence (LNSTAR(1,1), SrcName(1))
+!      Equivalence (LSTRNM(1), SName)
 !
 !
 ! 4.2.9 PROGRAMMER - David Gordon Feb. 2013 
@@ -650,6 +651,7 @@
       END
 !**********************************************************************
       SUBROUTINE NFSTRP (EPBASE,STAR,EARTH,SITEV, CDX,CRAX,SDX,SRAX)
+      use srcmod
       IMPLICIT None
 !
 ! 5.1.1 STRP is the partial derivatives section of the STAR module. It computes
@@ -681,7 +683,7 @@
 !             1. VLIGHT  - THE VELOCITY OF LIGHT IN VACUUM.  (M/SEC)
 !             2. VLIGHT2 - THE VELOCITY OF LIGHT IN VACUUM SQUARED.
 !                          (M**2/SEC**2)
-      INCLUDE 'cmxsr11.i'
+!      INCLUDE 'cmxsr11.i'
 !           VARIABLES 'FROM':
 !             1. CD  - THE COSINE OF THE DECLINATION OF THE STAR BEING
 !                      USED IN THE CURRENT OBSERVATION.

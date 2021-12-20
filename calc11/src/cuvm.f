@@ -259,6 +259,7 @@
 !
 !**********************************************************************
       SUBROUTINE UVG_plus (EPBASE,STAR,STAR_plus,EARTH,SITEV)
+      use srcmod
       IMPLICIT None
 !
 ! 5.1.1 UVG_plus: Modified version STRP, the partial derivative the delay
@@ -292,7 +293,7 @@
 !             2. VLIGHT2 - THE VELOCITY OF LIGHT IN VACUUM SQUARED.
 !                          (M**2/SEC**2)
 !
-      INCLUDE 'cmxsr11.i'
+!      INCLUDE 'cmxsr11.i'
 !           VARIABLES 'FROM':
 !             1. CD  - THE COSINE OF THE DECLINATION OF THE STAR BEING
 !                      USED IN THE CURRENT OBSERVATION.

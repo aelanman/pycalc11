@@ -70,7 +70,7 @@ def get_extensions():
         libraries=['gsl', 'gslcblas'],
 #        extra_f90_compile_args=['-fallow-argument-mismatch'],
         #extra_f90_compile_args=['-Wno-argument-mismatch'],
-        extra_f90_compile_args=['-Wargument-mismatch'],
+        extra_f90_compile_args=['-Wargument-mismatch', '-fcheck=bounds', '-DF2PY_REPORT_ATEXIT'],
     )
 
     return [calc_ext]

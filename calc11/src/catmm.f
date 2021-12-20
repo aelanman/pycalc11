@@ -1859,7 +1859,7 @@
 !     Program specifications -
       Real*8  CFSTAR(3,2), CFTOTC(3,3), R2K(3,3,3), SITLAT(2),          &
      &        K_EWNS(3,4), TCSTAR(3,2), TCTOCF(3,3,2), TR2000(3,3,2),   &
-     &        TAZ(2),K_EWNS_ab(3,4)
+     &        TAZ(4),K_EWNS_ab(3,4)
 !
       Real*8 DOTP, EARTH(3,3), VR, SITEV(3,2), Earthplus(3)
       Real*8 Vecmg, starcheck, K_Unit_Aberr(3), Vel_dif(3)

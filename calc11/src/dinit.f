@@ -149,7 +149,7 @@
       END
 !
 !*************************************************************************
-      SUBROUTINE allocOutArrays(Nepoch, Nstat1, Nstat2, Nsrc)
+      SUBROUTINE alloc_out_arrays(Nepoch, Nstat1, Nstat2, Nsrc)
       use outputs
       IMPLICIT None
 
@@ -184,8 +184,67 @@
      &          source=real(0.0,8))
       ALLOCATE(Iymdhms_f(Nepoch, 6), source=0)
 
-      END SUBROUTINE allocOutArrays
+      END SUBROUTINE alloc_out_arrays
 
+
+      SUBROUTINE alloc_source_arrays(Nsrc)
+      use srcmod
+      IMPLICIT None
+      Integer*2 Nsrc
+
+      NumStr = Nsrc
+
+      if (ALLOCATED(RADEC)) THEN
+        DEALLOCATE(RADEC, P_motion, PRcorr)
+        DEALLOCATE(D_psec)
+        DEALLOCATE(SrcName)
+        DEALLOCATE(LNSTAR)
+      ENDIF
+
+      ALLOCATE(RADEC(2, Nsrc), source=real(0.0, 8))
+      ALLOCATE(P_motion(3, Nsrc), source=real(0.0, 8))
+      ALLOCATE(PRcorr(2, Nsrc), source=real(0.0, 8))
+      ALLOCATE(D_psec(Nsrc), source=real(0.0, 8))
+      ALLOCATE(SrcName(Nsrc), source=repeat(" ", 20))
+      ALLOCATE(LNSTAR(10, Nsrc), source=int(0, 2))
+
+      END SUBROUTINE alloc_source_arrays
+!*************************************************************************
+
+      SUBROUTINE set_srcname(Nsrc)
+      use srcmod
+      IMPLICIT None
+
+      ! When running CALC from python, allocatable string arrays are not
+      ! accessible due to a bug in f2py
+      ! The temporary solution is to pass source names in as integers
+      ! via the LNSTAR integer array, then unpack them here into SrcName
+
+      ! This subroutine needs to be run after allocating LNSTAR
+      ! TODO -- Still not working right
+
+      integer*2, intent(in) :: Nsrc
+      integer*2 ii, jj, val
+      character(2) buckets(10)
+      character(30) recv
+      recv = " "
+      do jj=1, Nsrc
+        do ii=1, 10
+          val = LNSTAR(ii,jj)
+          buckets(ii) = TRANSFER(val, "  ")
+        enddo
+        write (recv,fmt='(*(A,:,""))') buckets
+        write(6,*) recv 
+        SrcName(jj) = recv(1:20)
+      enddo
+
+      ! TESTING
+      !DEALLOCATE(SrcName)
+!      do jj=1, Nsrc
+!        write(6, *) 'TEST: ', SrcName(jj)
+!      enddo
+
+      END SUBROUTINE set_srcname
 
 !*************************************************************************
       SUBROUTINE dSITI(Kjob)

@@ -1,5 +1,6 @@
       SUBROUTINE aDRIVR(Iscan,J2m)
       use outputs
+      use srcmod
       IMPLICIT None
 !
 ! 1.    DRIVR
@@ -117,7 +118,7 @@
       Real*8 AXIS2000(3,2), DAXIS2000(3,2), STAR_ABERRATED(3,2),        &
      &       dATMCdh(2,2), STAR_ABERRATEDdt(3,2)
       Real*8 UTC, XJD, AT, DUTCAT, CT, DATDCT, DLPGR, DUT1AT, UT1,      &
-     &       EPSMNR, DIURNV, WOBXR, WOBYR, CD, CRA, SD, SRA,            &
+     &       EPSMNR, DIURNV, WOBXR, WOBYR,                              &
      &       NUTDIF(2,2), SJD, TJD, OBSDIF
       Real*8 WOBXD,WOBYD,THETA,RPOM(3,3),RBPN(3,3),RT2C(3,3),           &
      &       RBPNC(3,3),RT2CC(3,3)
