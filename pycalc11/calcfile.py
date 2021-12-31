@@ -21,7 +21,7 @@ from .utils import get_leap_seconds, iers_tab
 # Up to date EOPs and leap second tables from the IERS
 
 
-def make_calc(telescope_positions, telescope_names, source_coords,
+def make_calc(station_coords, station_names, source_coords,
               source_names, time, duration_min, ofile_name=None,
               im_filename=None):
     """
@@ -29,9 +29,9 @@ def make_calc(telescope_positions, telescope_names, source_coords,
 
     Parameters
     ----------
-    telescope_positions: list of astropy.coordinates.EarthLocation
+    station_coords: list of astropy.coordinates.EarthLocation
         Positions of telescopes on the Earth.
-    telescope_names: list of str
+    station_names: list of str
         Corresponding telescope names. These must be unique.
     source_coords: list of astropy.coordinates.SkyCoord
         Source positions to include.
@@ -116,8 +116,8 @@ def make_calc(telescope_positions, telescope_names, source_coords,
     # ----------------------------
     # Sources
     # ----------------------------
-    # CALCODE = calibration code, typicallyA,B,Cfor calibrators,Gfor a gated pulsar, or blank for normal target
-    # https://www.atnf.csiro.au/vlbi/dokuwiki/lib/exe/fetch.php/difx/difxuserguide.pdf  
+    # CALCODE = calibration code, typically A,B,C for calibrators, G for a gated pulsar, or blank for normal target
+    # https://www.atnf.csiro.au/vlbi/dokuwiki/lib/exe/fetch.php/difx/difxuserguide.pdf
     lines.append("NUM SOURCES: {:d}".format(len(source_names)))
     for si, (coord, name) in enumerate(zip(source_coords, source_names)):
         newlines = [
@@ -132,16 +132,22 @@ def make_calc(telescope_positions, telescope_names, source_coords,
     # ----------------------------
     # Telescopes
     # ----------------------------
-    n_ants = len(telescope_names)
+    n_ants = len(station_names)
+    # check for lowercase in telescope names
+    for char in "".join(station_names):
+        if char.islower():
+            warnings.warn("Station names should be all uppercase. "
+                          "Lowercase detected. Changing to uppercase.")
+            break
     lines.append("NUM TELESCOPES:     {}".format(n_ants))
     for ti in range(n_ants):
         newlines=[
-            "TELESCOPE {:d} NAME:   {}".format(ti, telescope_names[ti]),
+            "TELESCOPE {:d} NAME:   {}".format(ti, station_names[ti].upper()),
             "TELESCOPE {:d} MOUNT:  AZEL".format(ti),
             "TELESCOPE {:d} OFFSET (m): 0.0000".format(ti),
-            "TELESCOPE {:d} X (m): {:.8f}".format(ti, telescope_positions[ti].x.to_value('m')),
-            "TELESCOPE {:d} Y (m): {:.8f}".format(ti, telescope_positions[ti].y.to_value('m')),
-            "TELESCOPE {:d} Z (m): {:.8f}".format(ti, telescope_positions[ti].z.to_value('m')),
+            "TELESCOPE {:d} X (m): {:.8f}".format(ti, station_coords[ti].x.to_value('m')),
+            "TELESCOPE {:d} Y (m): {:.8f}".format(ti, station_coords[ti].y.to_value('m')),
+            "TELESCOPE {:d} Z (m): {:.8f}".format(ti, station_coords[ti].z.to_value('m')),
             "TELESCOPE {:d} SHELF:  None".format(ti),
         ]
         lines.extend(newlines)

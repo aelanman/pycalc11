@@ -175,11 +175,11 @@
 
 ! Allocate arrays that need to be declared.
       ALLOCATE(Delay_f(Nepoch,Nstat1,Nstat2,Nsrc), source=real(0.0, 8))
-      ALLOCATE(Rate_f, Ubase_f, Vbase_f, Wbase_f, mold=Delay_f)
+      ALLOCATE(Rate_f, Ubase_f, Vbase_f, Wbase_f, source=Delay_f)
       ALLOCATE(Atmdryd_f(IB,Nepoch,Nstat1,Nstat2,Nsrc),                   &
      &          source=real(0.0, 8))
       ALLOCATE(Atmdryr_f, Atmwetd_f, Atmwetr_f, El_f, Az_f, StaX_f,       &
-     &         StaY_f, StaZ_f, mold=Atmdryd_f)
+     &         StaY_f, StaZ_f, source=Atmdryd_f)
       ALLOCATE(Partials_f(2,2,Nepoch,Nstat1,Nstat2,Nsrc),                 &
      &          source=real(0.0,8))
       ALLOCATE(Iymdhms_f(Nepoch, 6), source=0)
@@ -1715,12 +1715,12 @@
 !
 ! See if this station is in the database list
        Do I = 1, Numsit
+!         write(6, *), 'dOCNIN: Site ', Dbsites(I), Inbuf(3:10)
          If (Inbuf(3:10) .eq. Dbsites(I) .or.                           &
      &       Inbuf(13:20) .eq. Dbsites(I) .or.                          &
      &       Inbuf(23:30) .eq. Dbsites(I) ) Then
 !    &       Inbuf(13:14) .eq. Dbsites(I)(1:2) .or.                     &
 !    &       Inbuf(23:24) .eq. Dbsites(I)(1:2) ) Then
-!**       print *, 'dOCNIN: Site ', Dbsites(I)
 !  Matched I'th station in data base station list, save station particulars
            II = I
 !
@@ -1777,10 +1777,10 @@
       DO I = 1, Numsit
         If (Jsite(i) .eq. 0) Then
            If (I .ne. Zero_site) Then
-            If (iquit.eq.0) Write(6,'(/)')
-            Write(6,'("Warning - No ocean loading coefficients for ",   &
-     &         A8,/, "Will continue but you really should update file ", &
-     &         A128,/)')  Dbsites(I), OC_file
+!            If (iquit.eq.0) Write(6,'(/)')
+!            Write(6,'("Warning - No ocean loading coefficients for ",   &
+!     &         A8,/, "Will continue but you really should update file ", &
+!     &         A128,/)')  Dbsites(I), OC_file
             Iquit = Iquit + 1
              Do k = 1, 11
               SITOAM(k,I)   = 0.D0
@@ -2083,10 +2083,10 @@
 !
       do I = 1, Numsit
         if (Jsite(I) .eq. 0 .and. I .ne. Zero_site) Then
-          If (iquit.eq.0) Write(6,'(/)')
-          Write(6,'("Warning - No ocean pole tide loading coefficients for ",  &
-     &         A8,/, "Will continue but you really should update file ", &
-     &         A100,/)')  Dbsites(I), OPTL_file
+!          If (iquit.eq.0) Write(6,'(/)')
+!          Write(6,'("Warning - No ocean pole tide loading coefficients for ",  &
+!     &         A8,/, "Will continue but you really should update file ", &
+!     &         A100,/)')  Dbsites(I), OPTL_file
           Iquit = Iquit + 1
         endif
 !        If (Iquit .gt. 0) Then

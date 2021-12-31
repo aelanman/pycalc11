@@ -1944,11 +1944,13 @@
 !    8.0 as "maxfiles" in the /etc/master file).
 !
       Integer*4 ipoint,if7,iumax
-      Save ipoint
+!      Save ipoint
 !
 !  Somewhat arbitrarily we start with 41.
 !
       Data ipoint/40/,if7/6/,iutot/3/,iumax/60/
+
+      COMMON /units/ ipoint, iutot, iumax
 !
   100 ipoint = ipoint+1
       iutot = iutot + 1
