@@ -2,6 +2,8 @@
 import numpy as np
 import warnings
 from astropy.time import TimeDelta
+from astropy import coordinates as ac
+from astropy.constants import R_earth
 from datetime import datetime
 
 from .utils import get_leap_seconds, iers_tab
@@ -123,7 +125,7 @@ class Calc:
             raise ValueError(
                 "If calc_file is not set, then all of the following must be set:"
                 "\n \t " + ", ".join(kwargs.keys()) +
-                "Missing: " + ", ".join([k for k,v in kwargs.items() if v is None])
+                "\nMissing: " + ", ".join([k for k,v in kwargs.items() if v is None])
             )
         else:
             del self.calc_file
@@ -499,6 +501,7 @@ class OceanFiles:
 
     optl_data = None
     oc_data = None
+    stat_pos = None     # Lons/lats/heights of stations in degrees/meters, from file.
 
     def __new__(cls):
         cls.read_optl()
@@ -508,12 +511,12 @@ class OceanFiles:
     def read_optl(cls):
         """Read ocean pole tide loading coefficients from file."""
         nms = ['name', 'code', 'lat', 'lon', 'urr', 'uri', 'unr', 'uni', 'uer', 'uei']
-        dt = np.dtype(list(zip(nms, ['U10', 'U4'] + ['f8'] * 8)))
+        dt = np.dtype(list(zip(nms, ['U8', 'U4'] + ['f8'] * 8)))
         with open(cls.OPTL_file, 'r') as optl_file:
             lns = optl_file.readlines()[5:]
             dat = []
             for li, ln in enumerate(lns):
-                name = ln[:10]
+                name = ln[1:9]
                 code = ln[10:14]
                 vals = list(map(float, ln[15:].split()))
                 if len(vals) != 8:
@@ -524,20 +527,31 @@ class OceanFiles:
     @classmethod
     def read_oc(cls):
         """Read ocean loading coefficients from file."""
-        dt = np.dtype([('name', 'U10'), ('code', 'U4'), ('coefs', 'f8', (6,11))])
+        dt = np.dtype([('name', 'U8'), ('code', 'U4'),
+                       ('lonlat_deg', 'f8', (3,)),('coefs', 'f8', (6,11))])
         with open(cls.OC_file, 'r') as oc_file:
             ocean_load = []
             stat = ""
             coef = []
             code = ""
+            lonlat = None
             for ln in oc_file.readlines():
+                spl = ln.strip().split()
+                if "lon/lat" in ln:
+                    # Get site position
+                    stat = spl[1].strip().replace(',',"")
+                    if stat.lower() == 'geocentr':
+                        lonlat = (0,0,0)
+                    else:
+                        lon, lat, height= tuple(map(float, spl[-3:]))
+                        lonlat = (lon, lat, height)
+                    continue
                 if ln.startswith("$$"):
                     continue
-                spl = ln.strip().split()
                 if len(spl) < 6:
                     if len(coef) != 0:
                         ocean_load.append(
-                            tuple([stat.ljust(10), code.ljust(4)] + [coef])
+                            tuple([stat.ljust(10), code.ljust(4)] + [lonlat] + [coef])
                         )
                     stat = spl[0]
                     code = spl[1] if len(spl) == 2 else ""
@@ -547,7 +561,7 @@ class OceanFiles:
         cls.oc_data = np.asarray(ocean_load, dtype=dt)
 
     @classmethod
-    def check_sites(cls, site_names):
+    def check_sites(cls, site_names, site_pos=None, sep_tol=10):
         """
         Verify that the sites given are in the ocean data files.
 
@@ -557,12 +571,19 @@ class OceanFiles:
             List of strings giving station names.
             Each name, stripped of trailing and preceding whitespace, should be in
             the `name` column of the oc_data and optl_data arrays.
+        site_pos: list of astropy.coordinates.EarthLocation
+            Optional. Positions corresponding with stations in site_names.
+            Verify that the given lon/lat positions are close to positions listed in
+            ocean pole tide loading file.
+        sep_tol: float
+            Tolerance for comparing site positions, in meters.
+            Optional. Default = 10 meters
         """
         oc_names = [s.strip() for s in cls.oc_data['name']]
         optl_names = [s.strip() for s in cls.optl_data['name']]
 
-        snames0 = [s.strip() for s in site_names if s not in oc_names]
-        snames1 = [s.strip() for s in site_names if s not in optl_names]
+        snames0 = [s.strip() for s in site_names if s.upper() not in oc_names]
+        snames1 = [s.strip() for s in site_names if s.upper() not in optl_names]
 
         if len(snames0) > 0:
             warnings.warn(
@@ -575,6 +596,28 @@ class OceanFiles:
                 "No ocean loading coefficients found for " +
                 ", ".join(snames1)
             )
+
+        if site_pos is not None:
+            sndists = []
+            for si, sn in enumerate(site_names):
+                if sn in snames0 or sn in snames1:
+                    continue
+                ind = oc_names.index(sn.strip())
+                lon, lat, height = cls.oc_data['lonlat_deg'][ind]
+                ref_pos = ac.SkyCoord(ac.EarthLocation.from_geodetic(
+                    lon=lon, lat=lat).itrs
+                )
+                dist = ref_pos.separation(ac.SkyCoord(site_pos[si].itrs))
+                if dist.rad * R_earth.to_value('m') > sep_tol:
+                    d = dist.rad * R_earth
+                    sndists.append(f"\t {sn} : {d}")
+
+            if len(sndists) > 0:
+                warnings.warn(
+                  f"Station positions given are farther than {sep_tol} m from positions in "
+                  "ocean loading coefficients file: \n"
+                  + "\n".join(sndists)
+                )
 
 # Init
 OceanFiles()

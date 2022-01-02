@@ -17,13 +17,14 @@
      &                 GLAT(Max_Stat), Dbtilt(2,Max_Stat), &
      &                 Rotilt(3,3,Max_Stat), OPTL6(6,Max_Stat)
       Integer*2 KTYPE(Max_Stat), NLAST(2), NUMSIT, LNSITE(4,Max_Stat),  &
-     &          i3dum
+     &          i3dum, OC_Coefs_found(2,Max_Stat)
       Integer*4 Zero_site
 !
       COMMON / SITCM / CFRAD, PLAT, PLON, SITAXO, SITOAM, SITOPH,       &
      &                 SITXYZ, SNRM, SITZEN, TCROT, XLAT, XLON, SITHOA, &
      &                 SITHOP, HEIGHT, RTROT, GLAT, Dbtilt, Rotilt,     &
-     &                 OPTL6, Zero_site, KTYPE, NLAST, LNSITE, NUMSIT
+     &                 OPTL6, Zero_site, KTYPE, NLAST, LNSITE, NUMSIT,  &
+     &                 OC_Coefs_found
 !
 !       1. CFRAD(Max_Stat)      -  THE SITE SPHERICAL EARTH RADII.  (M)
 !       2. PLAT(3,Max_Stat)     -  THE PARTIAL DERIVATIVES OF THE SITE CRUST

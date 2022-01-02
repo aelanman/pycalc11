@@ -238,7 +238,6 @@
         SrcName(jj) = recv(1:20)
       enddo
 
-      ! TESTING
       !DEALLOCATE(SrcName)
 !      do jj=1, Nsrc
 !        write(6, *) 'TEST: ', SrcName(jj)
@@ -1715,7 +1714,9 @@
 !
 ! See if this station is in the database list
        Do I = 1, Numsit
-!         write(6, *), 'dOCNIN: Site ', Dbsites(I), Inbuf(3:10)
+!    Inbuf(3:10)  = Full name
+!    Inbuf(13:20) = 2 character code
+!    Inbuf(23:30) = (nothing)
          If (Inbuf(3:10) .eq. Dbsites(I) .or.                           &
      &       Inbuf(13:20) .eq. Dbsites(I) .or.                          &
      &       Inbuf(23:30) .eq. Dbsites(I) ) Then
@@ -1723,6 +1724,7 @@
 !    &       Inbuf(23:24) .eq. Dbsites(I)(1:2) ) Then
 !  Matched I'th station in data base station list, save station particulars
            II = I
+           OC_Coefs_found(2,I) = 1
 !
 !  Skip comments
  170    Continue
@@ -2014,6 +2016,7 @@
       Equivalence (LNSITE(1,1), Dbsites(1))
       Integer*4 I, II, Jsite(Max_stat), Iunit, Ios, Iquit, Index, J
       Integer*4 Get4unit, Kjob, Kerr
+!      Integer*2 OC_Coefs_found(2,Max_Stat)
 !     Integer*2 Kerr(10)
       Character*3 C3, dum1, dum2, dum3
       Save Iunit
@@ -2029,7 +2032,7 @@
           OPTL6(J,I) = 0.0D0
          Enddo
        Enddo
-!
+
 !  Open the Ocean pole tide loading data file
        If (Kjob .eq. 1) Iunit = get4unit()
        Open (Unit=Iunit, File=OPTL_file, Status='old', Action='READ',   &
@@ -2065,6 +2068,7 @@
           OPTL6(5,II) =  u_eR
           OPTL6(6,II) =  u_eI
            Jsite(II) = II
+          OC_Coefs_found(1,I) = 1
 !
          Endif
        enddo

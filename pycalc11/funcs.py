@@ -1,5 +1,6 @@
-from . import interface as ci
+from .interface import CalcInterface, OceanFiles
 
+ci = CalcInterface()
 
 def _get_quantity(quantity,
     telescope_positions=None, telescope_names=None, source_coords=None,
@@ -24,7 +25,7 @@ def _get_quantity(quantity,
     else:
         ci.set_cl()
         ci.run(alloc_out_arrays=(6, 1, len(telescope_names)+1, len(source_names)+1))  # TODO Remove distinction between pointing and phase src
-#        ci.run(alloc_source_arrays=(len(source_names)+1))      # TODO Remove distinction between pointing and phase src
+#        ci.run(alloc_source_arrays=(len(source_names)+1))
         ci.set_sources(source_coords, source_names)
         ci.set_eops(time)
         ci.set_scan(time, duration_min)

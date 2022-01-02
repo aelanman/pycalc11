@@ -3,13 +3,14 @@ import numpy as np
 from astropy import constants as const
 from astropy import coordinates as ac
 from astropy.time import Time
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 from copy import deepcopy
+import warnings
 
 import pytest
 
 from pycalc11.calcfile import make_calc
-from pycalc11.interface import Calc, calc
+from pycalc11.interface import Calc, calc, OceanFiles
 from pycalc11.utils import astropy_delay, astropy_delay_rate
 
 
@@ -46,8 +47,7 @@ def compare_dicts(c0,c1, quiet=False):
 # Set up station locations and source/scan data
 #-----------------------------
 def make_params(nsrcs=305, duration_min=10):
-    #time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
-    time = Time("2017-10-28T15:30:00.00", format="isot", scale='utc')
+    time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
     gbo_loc = ac.EarthLocation.of_site("GBT")
     chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
     wf_loc = ac.EarthLocation.from_geocentric(      # Haystack westford antenna
@@ -122,9 +122,7 @@ def run_calc_2x(calcf_kwargs={}, calcfile_name="temp.calc", base_mode="geocenter
 def test_reset(params):
 #   > Reset works properly
     stat0 = get_mod_state(calc)
-    #import IPython; IPython.embed()
     ci = Calc(**params)
-    #import IPython; IPython.embed()
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)
     ci.reset()
     stat1 = get_mod_state(calc)
@@ -133,13 +131,15 @@ def test_reset(params):
     assert res
 
 
-#@pytest.mark.parametrize("atmo", [True, False])
-def test_file_vs_kwds(atmo=False):
+@pytest.mark.parametrize("atmo", [True, False])
+def test_file_vs_kwds(atmo, tmpdir):
 #   > Module attributes match when run from calcfile or from keywords
 #   > Delays, delay rates, partials match between calcfile and keywords
+    calcname = str(tmpdir.join("temp.calc"))
     params = make_params(nsrcs=5)
-    quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params, dry_atm=atmo, wet_atm=atmo)
-
+    quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params,
+                                           calcfile_name=calcname,
+                                           dry_atm=atmo, wet_atm=atmo)
     # TODO -- Fix so these compare properly
     #assert compare_dicts(c0, c1)
     for k, qi in quants1.items():
@@ -214,7 +214,76 @@ def test_ddr_vals(base_mode, params):
                     assert_allclose(ci.delay[ti, s1i, s2i, :], ap_del, rtol=0.05)
                     assert_allclose(ap_dlr, ci.delay_rate[ti, s1i, s2i, :], rtol=0.05)
 
+def test_oc_warnings(params):
+#   > Check that OceanFiles.check_sites warns about the correct sites being missing
+#   > from ocean loading and ocean pole tide loading files.
+#   > TODO I shouldn't need to use the full setup to run this test. Rewrite to just use dinit
+#          to run the file parser in CALC (filling oc_coefs_found) before comparing with
+#          OceanFiles.check_sites.
+
+    wf_loc = ac.EarthLocation.from_geocentric(      # Haystack westford antenna
+        x= 1492206.5970,
+        y=-4458130.5170,
+        z= 4296015.5320,
+        unit='m',
+    )
+
+    ggao_loc = ac.EarthLocation.from_geocentric(    # Goddard, Greenbelt, Maryland
+         x=  1130794.76936,
+         y= -4831233.80170,
+         z=  3994217.03883,
+        unit='m',
+    )
+    mwa_loc = ac.EarthLocation.of_site("MWA")
+    locs = [wf_loc, ggao_loc, mwa_loc]
+    nmes = ["WESTFORD", "GGAO7108", "mwa"]
+    params['station_names'] = nmes
+    params['station_coords'] = locs
+    with warnings.catch_warnings(record=True) as warning_list:
+        ci = Calc(**params)
+
+    msgs = [str(w.message) for w in warning_list]
+
+    # lists of antenna names found by OceanFiles.check_sites
+    # Start with full list and remove if in warning messages.
+    oc_bad0 = []
+    optl_bad0 = []
+    for msg in msgs:
+        ant = msg.split()[-1]
+        if "ocean loading" in msg:
+            oc_bad0.append(ant.ljust(8))
+        elif "ocean pole tide" in msg:
+            optl_bad0.append(ant.ljust(8))
+
+    oc_bad0 = np.asarray(oc_bad0, dtype='<U8')
+    optl_bad0 = np.asarray(optl_bad0, dtype='<U8')
+    # calc.sitcm.oc_coefs_found[0, ii] == 1 if calc.calc_input.sites[ii] found in
+    #   ocean pole tide loading coefficients file
+    # calc.sitcm.oc_coefs_found[1, ii] == 1 if calc.calc_input.sites[ii] found in
+    #   ocean loading data file.
+    oc_bad = ci.stat_names[~calc.sitcm.oc_coefs_found[1][1:ci.nants+1].astype(bool)]
+    optl_bad = ci.stat_names[~calc.sitcm.oc_coefs_found[0][1:ci.nants+1].astype(bool)]
+
+    for l in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
+        l.sort()
+
+    assert_array_equal(oc_bad0, oc_bad)
+    assert_array_equal(optl_bad0, optl_bad)
+
+
+def test_oc_dist_warnings():
+    anmes = ['gbt', 'mwa', 'vla', 'ALMA', 'CHIME']
+    site_locs = [ac.EarthLocation.of_site(nm) for nm in anmes]
+    # Last one is assumed to be at DRAO, but given to calc as algo. Should give big offset.
+    site_names = ['GBT-VLBA', 'mwa', 'VLA', 'ALMA', 'ALGOPARK']
+    with warnings.catch_warnings(record=True) as warning_list:
+        OceanFiles.check_sites(site_names=site_names, site_pos=site_locs)
+
+    for w in (str(wn.message) for wn in warning_list):
+        if "Station positions" in w:
+            assert all(st in w for st in ['ALMA', 'ALGOPARK'])
+            assert all(st not in w for st in ['GBT-VLBA', 'VLA'])
+
 #   > Correct error is raised when trying to access without running driver
 #   > Correct error is raised when initialized without params
-#   > Correct warnings are raised for oean parameters
 #   > Time steps make sense 
