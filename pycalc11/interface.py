@@ -50,8 +50,10 @@ class Calc:
         Default 'exact.
     dry_atm: bool
         Include dry troposphere contribution to delay.
+        Default True
     wet_atm: bool
         Include wet troposphere contribution to delay.
+        Default True
     calc_file: str
         Path to a .calc configuration file.
         If provided, all other parameters are optional.
@@ -186,8 +188,6 @@ class Calc:
 
     def reset(self):
         """Reset all common block items that were not initialized at startup.
-
-        Skips modules.
         """
         self._delay = None
         self._delay_rate = None
@@ -280,6 +280,10 @@ class Calc:
 
         Parameters
         ----------
+        time : astropy.time.Time
+            Start time of scan
+        duration_min : float
+            Duration of scan in minutes.
         """
         jstart = time
         jstop = time + TimeDelta(duration_min * 60, format='sec')
@@ -301,6 +305,9 @@ class Calc:
 
         Parameters
         ----------
+        time : astropy.time.Time
+            Start time.
+            EOPs will be computed for time + 1 + 2 days.
         """
         _times = time + TimeDelta(range(2), format='jd')
         jd = [np.floor(tt.jd) for tt in _times]
@@ -582,8 +589,8 @@ class OceanFiles:
         oc_names = [s.strip() for s in cls.oc_data['name']]
         optl_names = [s.strip() for s in cls.optl_data['name']]
 
-        snames0 = [s.strip() for s in site_names if s.upper() not in oc_names]
-        snames1 = [s.strip() for s in site_names if s.upper() not in optl_names]
+        snames0 = [s.strip() for s in site_names if s.strip() not in optl_names]
+        snames1 = [s.strip() for s in site_names if s.strip() not in oc_names]
 
         if len(snames0) > 0:
             warnings.warn(
@@ -597,6 +604,7 @@ class OceanFiles:
                 ", ".join(snames1)
             )
 
+#        import IPython; IPython.embed()
         if site_pos is not None:
             sndists = []
             for si, sn in enumerate(site_names):

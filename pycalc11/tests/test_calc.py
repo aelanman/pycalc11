@@ -1,6 +1,5 @@
 
 import numpy as np
-from astropy import constants as const
 from astropy import coordinates as ac
 from astropy.time import Time
 from numpy.testing import assert_allclose, assert_array_equal
@@ -49,7 +48,13 @@ def compare_dicts(c0,c1, quiet=False):
 def make_params(nsrcs=305, duration_min=10):
     time = Time("2020-10-02T15:30:00.00", format="isot", scale='utc')
     gbo_loc = ac.EarthLocation.of_site("GBT")
-    chime_loc = ac.EarthLocation.from_geodetic(lat=ac.Latitude('49d19m15.6s'), lon=ac.Longitude('119d37m26.4s'))
+
+
+    anames = ['gbt', 'vla', 'ALMA', 'mwa', 'chime']
+    site_locs = [ac.EarthLocation.of_site(nm) for nm in anames]
+    site_names = ['GBT-VLBA', 'VLA_E9', 'ALMA', 'MWA', 'CHIME']
+
+
     wf_loc = ac.EarthLocation.from_geocentric(      # Haystack westford antenna
         x= 1492206.5970,
         y=-4458130.5170,
@@ -63,6 +68,8 @@ def make_params(nsrcs=305, duration_min=10):
          z=  3994217.03883,
         unit='m',
     )
+    site_names = ["WESTFORD", "GGAO7108"] + site_names
+    site_locs = [wf_loc, ggao_loc] + site_locs
 
     srcs = ac.SkyCoord(
         az=np.random.uniform(0, 2 * np.pi, nsrcs),
@@ -74,14 +81,12 @@ def make_params(nsrcs=305, duration_min=10):
     )
     srcs = srcs.transform_to(ac.ICRS())
 
-    telescope_positions = [chime_loc, gbo_loc, wf_loc, ggao_loc]
-    telescope_names = ['chime', 'gbo', 'WESTFORD', 'GGAO7108']
     source_coords = [s for s in srcs]
     source_names = [f"src{si}" for si in range(nsrcs)]
 
     kwargs = {
-        "station_coords": telescope_positions,
-        "station_names": telescope_names,
+        "station_coords": site_locs,
+        "station_names": site_names,
         "source_coords": source_coords,
         "source_names": source_names,
         "time": time,
@@ -91,9 +96,18 @@ def make_params(nsrcs=305, duration_min=10):
     return kwargs
 
 @pytest.fixture(scope='session')
-def params():
+def params_all():
     # One realization of parameters
     return make_params()
+
+@pytest.fixture(scope='session')
+def params_vlbi():
+    # Keep stations in CALC database
+    # (i.e., remove MWA and CHIME from lists).
+    par = make_params()
+    par['station_coords'] = par['station_coords'][:-2]
+    par['station_names'] = par['station_names'][:-2]
+    return par
 
 
 def run_calc_2x(calcf_kwargs={}, calcfile_name="temp.calc", base_mode="geocenter",
@@ -119,10 +133,10 @@ def run_calc_2x(calcf_kwargs={}, calcfile_name="temp.calc", base_mode="geocenter
     return quants0, quants1, c0, c1
 
 
-def test_reset(params):
+def test_reset(params_vlbi):
 #   > Reset works properly
     stat0 = get_mod_state(calc)
-    ci = Calc(**params)
+    ci = Calc(**params_vlbi)
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)
     ci.reset()
     stat1 = get_mod_state(calc)
@@ -132,12 +146,11 @@ def test_reset(params):
 
 
 @pytest.mark.parametrize("atmo", [True, False])
-def test_file_vs_kwds(atmo, tmpdir):
+def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
 #   > Module attributes match when run from calcfile or from keywords
 #   > Delays, delay rates, partials match between calcfile and keywords
     calcname = str(tmpdir.join("temp.calc"))
-    params = make_params(nsrcs=5)
-    quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params,
+    quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params_vlbi,
                                            calcfile_name=calcname,
                                            dry_atm=atmo, wet_atm=atmo)
     # TODO -- Fix so these compare properly
@@ -149,43 +162,44 @@ def test_file_vs_kwds(atmo, tmpdir):
             assert_allclose(quants0[k], qi, rtol=1e-1)
 
 
-def test_calc_props(params):
+def test_calc_props(params_vlbi):
 #   > Calc attributes match passed params
-    ci = Calc(**params)
+    ci = Calc(**params_vlbi)
     ra, dec = ci.src_coords
     srcs = ac.SkyCoord(ra, dec, unit='rad', frame='icrs')
-    psrcs = ac.SkyCoord(params['source_coords'])
+    psrcs = ac.SkyCoord(params_vlbi['source_coords'])
     # Source positions
     assert_allclose(srcs.ra.rad, psrcs.ra.rad)
     assert_allclose(srcs.dec.rad, psrcs.dec.rad)
 
     # Station positions
     stats = [ac.EarthLocation.from_geocentric(*c, unit='m') for c in ci.stat_coords.T]
-    assert all([stats[ci] == loc for ci, loc in enumerate(params['station_coords'])])
+    assert all([stats[ci] == loc for ci, loc in enumerate(params_vlbi['station_coords'])])
 
 
-def test_kwd_override(params):
+@pytest.mark.filterwarnings("ignore:No ocean")
+def test_kwd_override(params_all, tmpdir):
 #   > Providing calc file and keywords --> Keywords override .calc file
-    calcfile_name = 'temp.calc'
-    make_calc(**params, ofile_name=calcfile_name)
+    calcfile_name = str(tmpdir.join("temp.calc"))
+    make_calc(**params_all, ofile_name=calcfile_name)
 
     # Remove a station
-    stat_locs = params['station_coords'][:-1]
-    stat_nmes = params['station_names'][:-1]
+    stat_locs = params_all['station_coords'][:-1]
+    stat_nmes = params_all['station_names'][:-1]
 
     ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
 
-    assert ci.stat_coords.shape[1] == len(stat_locs) == 3
+    assert ci.stat_coords.shape[1] == len(stat_locs) == 6
 
 
 @pytest.mark.skip("Can't set tolerance due to some systematic with astropy."
                   " To be explored further.")
 @pytest.mark.parametrize("base_mode", ['geocenter', 'baseline'])
-def test_ddr_vals(base_mode, params):
+def test_ddr_vals(base_mode, params_vlbi):
 #   > D, DR are close to expectation from a rough astropy calculation.
 #   (Eventually, set tolerances based on expected astropy accuracy.)
 #  NOTE -- Currently failing due to some conditions with some source positions.
-    pars = deepcopy(params)
+    pars = deepcopy(params_vlbi)
     # remove CHIME, because the one ~3000 km NW -- SE baseline is creating some
     # weird conditions with sources too near the horizon.
     pars['station_names'] = pars['station_names'][1:]
@@ -194,9 +208,8 @@ def test_ddr_vals(base_mode, params):
     ci.run_driver()
     st_nmes = pars['station_names']
     st_locs = pars['station_coords']
-    srcs = ac.SkyCoord(params['source_coords'])
+    srcs = ac.SkyCoord(params_vlbi['source_coords'])
     nstat = len(st_nmes)
-    t0 = params['time']
     gc = ac.EarthLocation.from_geocentric(0,0,0, unit='m')
     for ti, tt in enumerate(ci.times):
         if base_mode == 'geocenter':
@@ -214,46 +227,29 @@ def test_ddr_vals(base_mode, params):
                     assert_allclose(ci.delay[ti, s1i, s2i, :], ap_del, rtol=0.05)
                     assert_allclose(ap_dlr, ci.delay_rate[ti, s1i, s2i, :], rtol=0.05)
 
-def test_oc_warnings(params):
+
+def test_oc_warnings(params_all):
 #   > Check that OceanFiles.check_sites warns about the correct sites being missing
 #   > from ocean loading and ocean pole tide loading files.
 #   > TODO I shouldn't need to use the full setup to run this test. Rewrite to just use dinit
 #          to run the file parser in CALC (filling oc_coefs_found) before comparing with
 #          OceanFiles.check_sites.
 
-    wf_loc = ac.EarthLocation.from_geocentric(      # Haystack westford antenna
-        x= 1492206.5970,
-        y=-4458130.5170,
-        z= 4296015.5320,
-        unit='m',
-    )
-
-    ggao_loc = ac.EarthLocation.from_geocentric(    # Goddard, Greenbelt, Maryland
-         x=  1130794.76936,
-         y= -4831233.80170,
-         z=  3994217.03883,
-        unit='m',
-    )
-    mwa_loc = ac.EarthLocation.of_site("MWA")
-    locs = [wf_loc, ggao_loc, mwa_loc]
-    nmes = ["WESTFORD", "GGAO7108", "mwa"]
-    params['station_names'] = nmes
-    params['station_coords'] = locs
     with warnings.catch_warnings(record=True) as warning_list:
-        ci = Calc(**params)
+        ci = Calc(**params_all)
 
     msgs = [str(w.message) for w in warning_list]
 
-    # lists of antenna names found by OceanFiles.check_sites
-    # Start with full list and remove if in warning messages.
+    # lists of antenna names not found by OceanFiles.check_sites
     oc_bad0 = []
     optl_bad0 = []
     for msg in msgs:
-        ant = msg.split()[-1]
+        lst = msg.split(" ")
+        ants = [a.replace(',',"").strip().ljust(8) for a in lst[lst.index('for')+1:]]
         if "ocean loading" in msg:
-            oc_bad0.append(ant.ljust(8))
-        elif "ocean pole tide" in msg:
-            optl_bad0.append(ant.ljust(8))
+            oc_bad0 += ants
+        if "ocean pole tide" in msg:
+            optl_bad0 += ants
 
     oc_bad0 = np.asarray(oc_bad0, dtype='<U8')
     optl_bad0 = np.asarray(optl_bad0, dtype='<U8')
@@ -271,19 +267,67 @@ def test_oc_warnings(params):
     assert_array_equal(optl_bad0, optl_bad)
 
 
-def test_oc_dist_warnings():
-    anmes = ['gbt', 'mwa', 'vla', 'ALMA', 'CHIME']
-    site_locs = [ac.EarthLocation.of_site(nm) for nm in anmes]
+def test_oc_dist_warnings(params_all):
     # Last one is assumed to be at DRAO, but given to calc as algo. Should give big offset.
-    site_names = ['GBT-VLBA', 'mwa', 'VLA', 'ALMA', 'ALGOPARK']
     with warnings.catch_warnings(record=True) as warning_list:
-        OceanFiles.check_sites(site_names=site_names, site_pos=site_locs)
+        OceanFiles.check_sites(
+            site_names=params_all['station_names'], site_pos=params_all['station_coords']
+        )
 
+    print([str(wn.message) for wn in warning_list])
     for w in (str(wn.message) for wn in warning_list):
         if "Station positions" in w:
-            assert all(st in w for st in ['ALMA', 'ALGOPARK'])
-            assert all(st not in w for st in ['GBT-VLBA', 'VLA'])
+            assert all([st in w for st in ['VLA_E9', 'ALMA']])
+            assert all([st not in w for st in ['GBT-VLBA']])
 
+
+def test_partials_calc(params_vlbi):
+    # Get partial derivatives. Compare to approx calculation.
+
+    dth = np.radians(1 / 3600)    # 1 arcsec
+
+    c_ra = np.pi / 6
+    c_dec = np.pi / 4
+
+    srcs = ac.SkyCoord(
+        ra=[c_ra, c_ra, c_ra, c_ra - dth, c_ra + dth],
+        dec=[c_dec, c_dec - dth, c_dec + dth, c_dec, c_dec],
+        unit='rad', frame='icrs'
+    )
+    src_names = np.arange(srcs.size).astype(str)
+
+    pars = deepcopy(params_vlbi)
+    pars['source_coords'] = srcs
+    pars['source_names'] = src_names
+
+    ci = Calc(**pars, dry_atm=False, wet_atm=False)
+    ci.run_driver()
+
+    delays = ci.delay
+    partials = ci.partials
+
+    # Partial derivatives at the zeroth source position (our test point)
+    partials = partials[..., 0]
+
+    dtau_dra = (delays[..., 4] - delays[..., 3]) / (2 * dth)
+    dtau_ddec = (delays[..., 2] - delays[..., 1]) / (2 * dth)
+
+    # dtau_dra and dtau_ddec axes = (time, ant1, ant2) where ant1 is just geocenter
+    # partials axes = (ra or dec, D or DR, time, ant1, ant2)
+
+    assert_allclose(dtau_dra[:, 0, :], partials[0, 0, :, 0, :], atol=1e-6)
+    assert_allclose(dtau_ddec[:, 0, :], partials[1, 0, :, 0, :], atol=1e-6)
+
+
+def test_errors(params_all):
 #   > Correct error is raised when trying to access without running driver
 #   > Correct error is raised when initialized without params
+    with pytest.raises(ValueError, match="If calc_file is not set"):
+        Calc()
+
+    with pytest.raises(ValueError, match="Need to rerun adrivr"):
+        ci = Calc(**params_all)
+        ci.delay
+
+
 #   > Time steps make sense 

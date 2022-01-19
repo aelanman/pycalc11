@@ -1717,6 +1717,7 @@
 !    Inbuf(3:10)  = Full name
 !    Inbuf(13:20) = 2 character code
 !    Inbuf(23:30) = (nothing)
+!         Write(6,*) Inbuf(3:10), Dbsites(I), OC_file
          If (Inbuf(3:10) .eq. Dbsites(I) .or.                           &
      &       Inbuf(13:20) .eq. Dbsites(I) .or.                          &
      &       Inbuf(23:30) .eq. Dbsites(I) ) Then
@@ -2040,7 +2041,6 @@
 !
   50   Continue
        Read(Iunit,'(A80)',Err=180,End=250) Inbuf
-!       Write(6,*) Inbuf
        If (Inbuf(1:36) .eq. 'Ocean Pole Tide Loading Coefficients')     &
      &     Go to 100
        Go to 50

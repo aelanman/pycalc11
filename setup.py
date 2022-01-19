@@ -46,13 +46,13 @@ def get_extensions():
     from numpy.distutils.core import Extension
 
     # TODO: build inside a build directory rather than inside difxcalc11!!
-    if not (os.path.isfile(PARAM11) and newer(PARAM11, PARAM11_IN)):
-        with open(PARAM11_IN, 'rt') as fr, open(PARAM11, 'wt') as fw:
-            # TODO: point to installed data files, make link safe for windows.
-            fw.writelines(
-                [line.replace('@prefix@/share/difxcalc', str(DATADIR))
-                 .replace('@de421_file@', DE421_FILE_NAME)
-                 for line in fr.readlines()])
+#    if not (os.path.isfile(PARAM11) and newer(PARAM11, PARAM11_IN)):
+    with open(PARAM11_IN, 'rt') as fr, open(PARAM11, 'wt') as fw:
+        # TODO: point to installed data files, make link safe for windows.
+        fw.writelines(
+            [line.replace('@prefix@/share/difxcalc', str(DATADIR))
+             .replace('@de421_file@', DE421_FILE_NAME)
+             for line in fr.readlines()])
 
     if any(newer(fn, F90_COMBINED) for fn in F_SOURCES + INCLUDES):
         print(f'Creating combined f90 file {F90_COMBINED}')
