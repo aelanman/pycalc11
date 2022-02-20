@@ -5,7 +5,7 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.utils.data import get_pkg_data_filename
 
-from calc11.io import parse_calc, parse_im
+from pycalc11.io import parse_calc, parse_im
 
 
 CRAB_CALC = get_pkg_data_filename(os.path.join(

@@ -11,6 +11,8 @@ import pytest
 from pycalc11.calcfile import make_calc
 from pycalc11.interface import Calc, calc, OceanFiles
 from pycalc11.utils import astropy_delay, astropy_delay_rate
+from pycalc11.runner import run_difxcalc, difxcalc
+from pycalc11.imfile import CalcReader
 
 
 def get_mod_state(fmod):
@@ -134,7 +136,7 @@ def run_calc_2x(calcf_kwargs={}, calcfile_name="temp.calc", base_mode="geocenter
 
 
 def test_reset(params_vlbi):
-#   > Reset works properly
+#   Reset works properly
     stat0 = get_mod_state(calc)
     ci = Calc(**params_vlbi)
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)
@@ -147,14 +149,15 @@ def test_reset(params_vlbi):
 
 @pytest.mark.parametrize("atmo", [True, False])
 def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
-#   > Module attributes match when run from calcfile or from keywords
-#   > Delays, delay rates, partials match between calcfile and keywords
+#   Module attributes match when run from calcfile or from keywords
+#   Delays, delay rates, partials match between calcfile and keywords
     calcname = str(tmpdir.join("temp.calc"))
     quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params_vlbi,
                                            calcfile_name=calcname,
                                            dry_atm=atmo, wet_atm=atmo)
     # TODO -- Fix so these compare properly
     #assert compare_dicts(c0, c1)
+
     for k, qi in quants1.items():
         if k.startswith('times'):
             assert np.all(np.abs(quants0[k] - qi) < np.timedelta64('1', 'us'))
@@ -163,11 +166,12 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
 
 
 def test_calc_props(params_vlbi):
-#   > Calc attributes match passed params
+#   Calc attributes match passed params
     ci = Calc(**params_vlbi)
     ra, dec = ci.src_coords
     srcs = ac.SkyCoord(ra, dec, unit='rad', frame='icrs')
     psrcs = ac.SkyCoord(params_vlbi['source_coords'])
+
     # Source positions
     assert_allclose(srcs.ra.rad, psrcs.ra.rad)
     assert_allclose(srcs.dec.rad, psrcs.dec.rad)
@@ -179,7 +183,7 @@ def test_calc_props(params_vlbi):
 
 @pytest.mark.filterwarnings("ignore:No ocean")
 def test_kwd_override(params_all, tmpdir):
-#   > Providing calc file and keywords --> Keywords override .calc file
+#   Providing calc file and keywords --> Keywords override .calc file
     calcfile_name = str(tmpdir.join("temp.calc"))
     make_calc(**params_all, ofile_name=calcfile_name)
 
@@ -198,7 +202,6 @@ def test_kwd_override(params_all, tmpdir):
 def test_ddr_vals(base_mode, params_vlbi):
 #   > D, DR are close to expectation from a rough astropy calculation.
 #   (Eventually, set tolerances based on expected astropy accuracy.)
-#  NOTE -- Currently failing due to some conditions with some source positions.
     pars = deepcopy(params_vlbi)
     # remove CHIME, because the one ~3000 km NW -- SE baseline is creating some
     # weird conditions with sources too near the horizon.
@@ -229,9 +232,10 @@ def test_ddr_vals(base_mode, params_vlbi):
 
 
 def test_oc_warnings(params_all):
-#   > Check that OceanFiles.check_sites warns about the correct sites being missing
-#   > from ocean loading and ocean pole tide loading files.
-#   > TODO I shouldn't need to use the full setup to run this test. Rewrite to just use dinit
+#   Check that OceanFiles.check_sites warns about the correct sites being missing
+#   from ocean loading and ocean pole tide loading files.
+
+#   TODO I shouldn't need to use the full setup to run this test. Rewrite to just use dinit
 #          to run the file parser in CALC (filling oc_coefs_found) before comparing with
 #          OceanFiles.check_sites.
 
@@ -282,7 +286,7 @@ def test_oc_dist_warnings(params_all):
 
 
 def test_partials_calc(params_vlbi):
-    # Get partial derivatives. Compare to approx calculation.
+    # Get partial derivatives. Compare to approximate calculation from delays.
 
     dth = np.radians(1 / 3600)    # 1 arcsec
 
@@ -320,8 +324,8 @@ def test_partials_calc(params_vlbi):
 
 
 def test_errors(params_all):
-#   > Correct error is raised when trying to access without running driver
-#   > Correct error is raised when initialized without params
+    # Correct error is raised when trying to access without running driver
+    # Correct error is raised when initialized without params
     with pytest.raises(ValueError, match="If calc_file is not set"):
         Calc()
 
@@ -330,4 +334,37 @@ def test_errors(params_all):
         ci.delay
 
 
-#   > Time steps make sense 
+@pytest.skipif(difxcalc is None, reason='difxcalc must be installed for this test')
+def test_compare_to_difxcalc(params_vlbi, tmpdir):
+    # Compare running Calc here with results from a separately-installed difxcalc.
+
+    # Difxcalc can't handle more than 300 sources
+    # Just keep ten sources for this test.
+    params_vlbi['source_names'] = params_vlbi['source_names'][:10]
+    params_vlbi['source_coords'] = params_vlbi['source_coords'][:10]
+
+    quantities = ['delay', 'delay_rate', 'partials', 'times']
+    ci = Calc(**params_vlbi, base_mode='geocenter', dry_atm=False, wet_atm=False)
+    ci.run_driver()
+    quants1 = {q: getattr(ci, q).copy() for q in quantities}
+
+    calcname = str(tmpdir.join("temp.calc"))
+    make_calc(**params_vlbi, ofile_name=calcname)
+
+    impath = run_difxcalc(calcname, verbose=False)
+
+    im_obj = CalcReader(impath)
+
+    times = Time(quants1['times'])
+
+    delays = quants1['delay'] * (-1e6)
+    im_dels = np.zeros_like(delays)
+    for ti, tt in enumerate(times):
+        for si in range(10):
+            for ai in range(5):
+                # si + 1 because the first source (in difxcalc) is the same as 0th
+                # This is because the zeroth source is treated as the pointing center.
+                im_dels[ti, 0, ai, si] = im_obj.delay(ai, tt, si + 1)
+
+    # Tolerance of 1 nanosecond. Acceptable, considering loss of precision in writing to file?
+    assert_allclose(delays, im_dels, atol=1e-3)

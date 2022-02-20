@@ -65,7 +65,7 @@ class Calc:
     then the stations used in CALC will match those and not the ones in the provided .calc file.
     """
 
-    _rerun = True   # Rerun driver before accessing
+    _rerun = True       # Rerun driver before accessing results
 
     src_names = []      # Once the f2py bug (numpy issue 10027) with character arrays is
                         # fixed, this will be a property pointing to calc.calc_input.sites.
@@ -81,6 +81,7 @@ class Calc:
                 raise ValueError("Need to rerun adrivr before accessing data. Use Calc.run_driver().")
             else:
                 return func(self)
+        require_rerun.__doc__ = func.__doc__
         return require_rerun
 
     def __init__(self, station_names=None, station_coords=None,
@@ -187,8 +188,7 @@ class Calc:
         self._rerun = False
 
     def reset(self):
-        """Reset all common block items that were not initialized at startup.
-        """
+        """Reset all common block items that were not initialized at startup."""
         self._delay = None
         self._delay_rate = None
         self._partials = None
@@ -224,6 +224,12 @@ class Calc:
 
         Parameters
         ----------
+        station_names: list of str
+            Names of stations as strings
+            Should match names in the ocean loading / ocean pole tide loading files
+            if those coefficients are to be included.
+        station_coords: list of astropy.coordinates.EarthLocation
+            Station positions.
         """
         calc.sitcm.numsit = len(station_names) + 1
 
@@ -245,6 +251,10 @@ class Calc:
 
         Parameters
         ----------
+        source_names: list of str
+            Unique source names
+        source_coords: list of astropy.coordinates.SkyCoord
+            Celestial coordinates (ICRS, GCRS, etc.) of sources.
         """
         calc.calc_input.numphcntr = len(source_names)
         self.src_names = np.asarray(source_names)
@@ -307,7 +317,7 @@ class Calc:
         ----------
         time : astropy.time.Time
             Start time.
-            EOPs will be computed for time + 1 + 2 days.
+            EOPs will be computed for (time, time+1d, time+2d).
         """
         _times = time + TimeDelta(range(2), format='jd')
         jd = [np.floor(tt.jd) for tt in _times]
@@ -604,7 +614,6 @@ class OceanFiles:
                 ", ".join(snames1)
             )
 
-#        import IPython; IPython.embed()
         if site_pos is not None:
             sndists = []
             for si, sn in enumerate(site_names):

@@ -6,15 +6,7 @@ times, sources, and other parameters in astropy classes.
 
 import numpy as np
 import warnings
-from datetime import datetime
-from astropy.time import Time, TimeDelta
-from astropy.utils import data
-from astropy.utils import iers
-import astropy.coordinates as ac
-from astropy import units as un
-from astropy.constants import c as speed_of_light
-from multiprocessing import Process
-import pylab as pl
+from astropy.time import TimeDelta
 
 from .utils import get_leap_seconds, iers_tab
 
