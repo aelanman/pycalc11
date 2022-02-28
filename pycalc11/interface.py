@@ -12,7 +12,7 @@ from . import calc11 as calc
 
 class Calc:
     """
-    A class to handle the current state of the calc11 fortran object and run its functions.
+    A class to handle the current state of the calc11 fortran module and run its functions.
 
     A unique state is described by:
         - A set of telescope positions and names
@@ -556,7 +556,7 @@ class OceanFiles:
                 spl = ln.strip().split()
                 if "lon/lat" in ln:
                     # Get site position
-                    stat = spl[1].strip().replace(',',"")
+                    stat = ln[3:11].replace(',', '')
                     if stat.lower() == 'geocentr':
                         lonlat = (0,0,0)
                     else:
@@ -570,12 +570,37 @@ class OceanFiles:
                         ocean_load.append(
                             tuple([stat.ljust(10), code.ljust(4)] + [lonlat] + [coef])
                         )
-                    stat = spl[0]
-                    code = spl[1] if len(spl) == 2 else ""
+                    stat = ln[2:11]
+                    code = ln[12:15] if len(ln) >= 11 else ""
+                    code = code.replace('\n', '')
                     coef = []
                 else:
                     coef.append(list(map(float, spl)))
         cls.oc_data = np.asarray(ocean_load, dtype=dt)
+
+    @classmethod
+    def list_optl_sites(cls):
+        return cls.optl_data["name"]
+
+    @classmethod
+    def list_oc_sites(cls):
+        return cls.oc_data["name"]
+
+    @classmethod
+    def _get_ind(cls, arr, name, code=None):
+        name = name.ljust(8)
+        if code is not None:
+            code = code.ljust(4)
+            return np.where(arr["code"] == code)[0]
+        return np.where(arr["name"] == name)[0]
+
+    @classmethod
+    def get_oc_ind(cls, name, code=None):
+        return cls._get_ind(cls.oc_data, name, code=code)
+
+    @classmethod
+    def get_optl_ind(cls, name, code=None):
+        return cls._get_ind(cls.optl_data, name, code=code)
 
     @classmethod
     def check_sites(cls, site_names, site_pos=None, sep_tol=10):
@@ -596,28 +621,26 @@ class OceanFiles:
             Tolerance for comparing site positions, in meters.
             Optional. Default = 10 meters
         """
-        oc_names = [s.strip() for s in cls.oc_data['name']]
-        optl_names = [s.strip() for s in cls.optl_data['name']]
+        names = [s.ljust(8) for s in site_names]
+        oc_not_found = list(set(names) - set(cls.oc_data['name']))
+        optl_not_found = list(set(names) - set(cls.optl_data['name']))
 
-        snames0 = [s.strip() for s in site_names if s.strip() not in optl_names]
-        snames1 = [s.strip() for s in site_names if s.strip() not in oc_names]
-
-        if len(snames0) > 0:
+        if len(optl_not_found) > 0:
             warnings.warn(
                 "No ocean pole tide loading coefficients found for " +
-                ", ".join(snames0)
+                ", ".join([s.strip() for s in optl_not_found])
             )
 
-        if len(snames1) > 0:
+        if len(oc_not_found) > 0:
             warnings.warn(
                 "No ocean loading coefficients found for " +
-                ", ".join(snames1)
+                ", ".join([s.strip() for s in oc_not_found])
             )
 
         if site_pos is not None:
             sndists = []
             for si, sn in enumerate(site_names):
-                if sn in snames0 or sn in snames1:
+                if sn in oc_not_found or sn in optl_not_found:
                     continue
                 ind = oc_names.index(sn.strip())
                 lon, lat, height = cls.oc_data['lonlat_deg'][ind]
