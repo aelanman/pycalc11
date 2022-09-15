@@ -2,7 +2,7 @@
 Python bindings to CALC11
 *************************
 
-This package provides a Python interface to running the CALC delay modeling tool by providing parameters as 
+This package provides a Python interface to running the CALC delay modeling tool by providing parameters as
 astropy objects.
 
 CALC has a long history, originally written in Fortran 77 with parts updated into Fortran 90 over time. CALC aims to compute
@@ -66,7 +66,7 @@ instance and duration as a float, representing the length of the scan in minutes
     # ------------
     # Initialize the Calc object.
     # ------------
-    
+
     ci = Calc(
         station_names=site_names,
         station_coords=site_locs,
@@ -82,7 +82,7 @@ instance and duration as a float, representing the length of the scan in minutes
     ci.run_driver()
 
 
-To include ocean loading effects, the provided `station_names` must match entries in the ocean loading (OL) and 
+To include ocean loading effects, the provided `station_names` must match entries in the ocean loading (OL) and
 ocean pole tide loading (OPTL) data sets. The `OceanFiles` class gives more information on these.
 
 Alternatively, a `.calc` file may be given via the `calc_file` keyword. If both a calc file and keywords are

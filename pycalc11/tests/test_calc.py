@@ -24,7 +24,7 @@ def get_mod_state(fmod):
             continue
         for item, value in v.__dict__.items():
             odict[k + "_" + item] = deepcopy(value)
-    return odict 
+    return odict
 
 def compare_dicts(c0,c1, quiet=False):
     diffs = []
@@ -206,8 +206,7 @@ def test_kwd_override(params_all, tmpdir):
     stat_nmes = params_all['station_names'][:-1]
 
     ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
-
-    assert ci.stat_coords.shape[1] == len(stat_locs) == 6
+    assert ci.stat_coords.shape[1] == len(stat_locs) == 8
 
 
 @pytest.mark.skip("Can't set tolerance due to some systematic with astropy."
@@ -374,7 +373,7 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     im_dels = np.zeros_like(delays)
     for ti, tt in enumerate(times):
         for si in range(10):
-            for ai in range(5):
+            for ai in range(7):
                 # si + 1 because the first source (in difxcalc) is the same as 0th
                 # This is because the zeroth source is treated as the pointing center.
                 im_dels[ti, 0, ai, si] = im_obj.delay(ai, tt, si + 1)

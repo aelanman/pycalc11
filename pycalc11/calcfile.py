@@ -147,7 +147,6 @@ def make_calc(station_coords, station_names, source_coords,
     # ----------------------------
     # Scan Info (one scan, multiple pointings centers).
     # ----------------------------
-
     newlines = [
         "NUM SCANS:          1",
         "NUM SPACECRAFT:     0",

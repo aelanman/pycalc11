@@ -622,6 +622,8 @@ class OceanFiles:
             Optional. Default = 10 meters
         """
         names = [s.ljust(8) for s in site_names]
+        oc_names = [s for s in cls.oc_data['name']]
+
         oc_not_found = list(set(names) - set(cls.oc_data['name']))
         optl_not_found = list(set(names) - set(cls.optl_data['name']))
 
@@ -640,9 +642,10 @@ class OceanFiles:
         if site_pos is not None:
             sndists = []
             for si, sn in enumerate(site_names):
+                sn = sn.ljust(8)
                 if sn in oc_not_found or sn in optl_not_found:
                     continue
-                ind = oc_names.index(sn.strip())
+                ind = oc_names.index(sn)
                 lon, lat, height = cls.oc_data['lonlat_deg'][ind]
                 ref_pos = ac.SkyCoord(ac.EarthLocation.from_geodetic(
                     lon=lon, lat=lat).itrs
