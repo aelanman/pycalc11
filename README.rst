@@ -7,11 +7,16 @@ astropy objects.
 
 CALC has a long history, originally written in Fortran 77 with parts updated into Fortran 90 over time. CALC aims to compute
 VLBI baseline delays to picosecond precision by incorporating general relativistic deflection from the Sun, Earth, and other planets,
-solid Earth and ocean tide loading, and atmospheric contributions [CITATION].
+solid Earth and ocean tide loading, and atmospheric contributions [EUBANKS91]_.
 
 This repository carries a modified version of the CALC source code. The modifications enable easier operation
 as a library, rather than as a standalone program, and support array allocation for some arrays that were previously
 fixed-size.
+
+
+References
+----------
+    .. [EUBANKS91] Eubanks, Marshall, et al. Proceedings of the U.S. Naval Observatory Workshop on Relativistic Models for Use in Space Geodesy. 1991.
 
 
 Installation
