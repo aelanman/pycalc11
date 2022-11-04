@@ -32,10 +32,10 @@ extension to the pycalc11 module.
 Quick Start
 -----------
 
-The interface to running CALC11 is provided by the `Calc` class. A `Calc` instance may be initialized
+The interface to running CALC11 is provided by the ``Calc`` class. A ``Calc`` instance may be initialized
 with lists of stations, sources, a start time, and a duration, with the station locations given as
-astropy `EarthLocation` instances, source locations given as `SkyCoord`, start time as an astropy `Time`
-instance and duration as a float, representing the length of the scan in minutes.::
+astropy ``EarthLocation`` instances, source locations given as astropy ``SkyCoord``, start time as an astropy ``Time``
+instance, and duration as a float representing the length of the scan in minutes.::
 
     from pycalc11 import Calc
     from astropy import coordinates as ac
