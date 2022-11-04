@@ -24,7 +24,7 @@ def get_mod_state(fmod):
             continue
         for item, value in v.__dict__.items():
             odict[k + "_" + item] = deepcopy(value)
-    return odict 
+    return odict
 
 def compare_dicts(c0,c1, quiet=False):
     diffs = []
@@ -54,7 +54,7 @@ def make_params(nsrcs=305, duration_min=10):
 
     anames = ['gbt', 'vla', 'ALMA', 'mwa', 'chime']
     site_locs = [ac.EarthLocation.of_site(nm) for nm in anames]
-    site_names = ['GBT-VLBA', 'VLA_E9', 'ALMA', 'MWA', 'CHIME']
+    site_names = ['GBT-VLBA', 'VLA_E9', 'ALMA', 'MWA', 'CHIME 0']
 
 
     wf_loc = ac.EarthLocation.from_geocentric(      # Haystack westford antenna
@@ -70,8 +70,22 @@ def make_params(nsrcs=305, duration_min=10):
          z=  3994217.03883,
         unit='m',
     )
-    site_names = ["WESTFORD", "GGAO7108"] + site_names
-    site_locs = [wf_loc, ggao_loc] + site_locs
+
+    # Add the site NRAO85, since this has multiple unique entries in ocean loading
+    # that are distinguished by unique codes, while all having the same name.
+    nrao85_3_loc = ac.EarthLocation.from_geodetic(
+        lon= 280.1566,
+        lat= 38.4296,
+        height=785.847,
+    )
+    nrao85_1_loc = ac.EarthLocation.from_geodetic(
+        lon= 280.1718,
+        lat= 38.4359,
+        height=807.687,
+    )
+
+    site_names = ["WESTFORD", "GGAO7108", "NRAO85 3", "NRAO85 1"] + site_names
+    site_locs = [wf_loc, ggao_loc, nrao85_3_loc, nrao85_1_loc] + site_locs
 
     srcs = ac.SkyCoord(
         az=np.random.uniform(0, 2 * np.pi, nsrcs),
@@ -192,8 +206,7 @@ def test_kwd_override(params_all, tmpdir):
     stat_nmes = params_all['station_names'][:-1]
 
     ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
-
-    assert ci.stat_coords.shape[1] == len(stat_locs) == 6
+    assert ci.stat_coords.shape[1] == len(stat_locs) == 8
 
 
 @pytest.mark.skip("Can't set tolerance due to some systematic with astropy."
@@ -248,8 +261,7 @@ def test_oc_warnings(params_all):
     oc_bad0 = []
     optl_bad0 = []
     for msg in msgs:
-        lst = msg.split(" ")
-        ants = [a.replace(',',"").strip().ljust(8) for a in lst[lst.index('for')+1:]]
+        ants = [a.strip().ljust(8)[:8] for a in msg.split('for ')[1].split(',')]
         if "ocean loading" in msg:
             oc_bad0 += ants
         if "ocean pole tide" in msg:
@@ -334,7 +346,7 @@ def test_errors(params_all):
         ci.delay
 
 
-@pytest.skipif(difxcalc is None, reason='difxcalc must be installed for this test')
+@pytest.mark.skipif(difxcalc is None, reason='difxcalc must be installed for this test')
 def test_compare_to_difxcalc(params_vlbi, tmpdir):
     # Compare running Calc here with results from a separately-installed difxcalc.
 
@@ -361,10 +373,43 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     im_dels = np.zeros_like(delays)
     for ti, tt in enumerate(times):
         for si in range(10):
-            for ai in range(5):
+            for ai in range(7):
                 # si + 1 because the first source (in difxcalc) is the same as 0th
                 # This is because the zeroth source is treated as the pointing center.
                 im_dels[ti, 0, ai, si] = im_obj.delay(ai, tt, si + 1)
 
     # Tolerance of 1 nanosecond. Acceptable, considering loss of precision in writing to file?
     assert_allclose(delays, im_dels, atol=1e-3)
+
+
+def test_coef_vals(params_vlbi):
+    # Check that coefficient values found by OceanFiles match those loaded by calc.
+    with warnings.catch_warnings(record=True) as warning_list:
+        ci = Calc(**params_vlbi)
+
+    nants = len(params_vlbi['station_coords'])
+    names = params_vlbi['station_names']
+    inds = [OceanFiles.get_oc_ind(n)[0] for n in names]
+
+    # Phases are given as deg in the file, but converted to rad in CALC.
+    coefs = np.rollaxis(np.stack((
+        calc.sitcm.sitoam[..., 1:nants + 1],    # Vertical amplitude [m]
+        calc.sitcm.sithoa[:, 0, 1:nants + 1],   # horizontal amplitudes [m]
+        calc.sitcm.sithoa[:, 1, 1:nants + 1],
+        np.degrees(calc.sitcm.sitoph[..., 1:nants + 1]),  # Vertical phase [deg]
+        np.degrees(calc.sitcm.sithop[:, 0, 1:nants + 1]), # horizontal phases [deg]
+        np.degrees(calc.sitcm.sithop[:, 1, 1:nants + 1]),
+    )), 2, 0)
+
+    # Compare the above to the corresponding values in OceanFiles.oc_data['coefs']
+    assert_allclose(coefs, OceanFiles.oc_data['coefs'][inds])
+
+    # Now compare ocean pole tide loading coefs
+    keys = ['urr', 'uri', 'unr', 'uni', 'uer', 'uei']
+    inds = [OceanFiles.get_optl_ind(n)[0] for n in names]
+    coefs = calc.sitcm.optl6[:, 1:nants+1]
+    comp = np.zeros_like(coefs)
+    for ii in range(nants):
+        comp[:, ii] = OceanFiles.optl_data[keys][inds][ii].tolist()
+
+    assert_allclose(comp, coefs)
