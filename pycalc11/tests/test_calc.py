@@ -2,6 +2,8 @@
 import numpy as np
 from astropy import coordinates as ac
 from astropy.time import Time
+from astropy import units as un
+from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_allclose, assert_array_equal
 from copy import deepcopy
 import warnings
@@ -171,12 +173,14 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
                                            dry_atm=atmo, wet_atm=atmo)
     # TODO -- Fix so these compare properly
     #assert compare_dicts(c0, c1)
-
     for k, qi in quants1.items():
-        if k.startswith('times'):
+        if k == "times":
             assert np.all(np.abs(quants0[k] - qi) < np.timedelta64('1', 'us'))
+        elif k == "partials":
+            for nm in qi.dtype.names:
+                assert_quantity_allclose(quants0[k][nm], qi[nm], rtol=1e-1)
         else:
-            assert_allclose(quants0[k], qi, rtol=1e-1)
+            assert_quantity_allclose(quants0[k], qi, rtol=1e-1)
 
 
 def test_calc_props(params_vlbi):
@@ -220,7 +224,7 @@ def test_ddr_vals(base_mode, params_vlbi):
     # weird conditions with sources too near the horizon.
     pars['station_names'] = pars['station_names'][1:]
     pars['station_coords'] = pars['station_coords'][1:]
-    ci = Calc(**pars, base_mode=base_mode)
+    ci = Calc(**pars, base_mode=base_mode, dry_atm=False, wet_atm=False)
     ci.run_driver()
     st_nmes = pars['station_names']
     st_locs = pars['station_coords']
@@ -230,18 +234,18 @@ def test_ddr_vals(base_mode, params_vlbi):
     for ti, tt in enumerate(ci.times):
         if base_mode == 'geocenter':
             for si in range(nstat):
-                ap_del = astropy_delay(srcs, tt, st_locs[si], gc) / 1e6
-                ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc) / 1e6
+                ap_del = astropy_delay(srcs, tt, st_locs[si], gc)
+                ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc)
                 ra,dec = ci.src_coords
-                assert_allclose(ci.delay[ti, 0, si, :], ap_del, rtol=0.05)
-                assert_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], rtol=0.05)
+                assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, rtol=0.05)
+                assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], rtol=0.05)
         if base_mode == 'baseline':
             for s1i in range(nstat):
                 for s2i in range(s1i, nstat-1):
-                    ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i]) / 1e6
-                    ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i]) / 1e6
-                    assert_allclose(ci.delay[ti, s1i, s2i, :], ap_del, rtol=0.05)
-                    assert_allclose(ap_dlr, ci.delay_rate[ti, s1i, s2i, :], rtol=0.05)
+                    ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i])
+                    ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i])
+                    assert_quantity_allclose(ci.delay[ti, s1i, s2i, :], ap_del, rtol=0.05)
+                    assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, s1i, s2i, :], rtol=0.05)
 
 
 def test_oc_warnings(params_all):
@@ -300,10 +304,10 @@ def test_oc_dist_warnings(params_all):
 def test_partials_calc(params_vlbi):
     # Get partial derivatives. Compare to approximate calculation from delays.
 
-    dth = np.radians(1 / 3600)    # 1 arcsec
+    dth = 1 * un.arcsec
 
-    c_ra = np.pi / 6
-    c_dec = np.pi / 4
+    c_ra = np.pi / 6 * un.rad
+    c_dec = np.pi / 4 * un.rad
 
     srcs = ac.SkyCoord(
         ra=[c_ra, c_ra, c_ra, c_ra - dth, c_ra + dth],
@@ -329,10 +333,9 @@ def test_partials_calc(params_vlbi):
     dtau_ddec = (delays[..., 2] - delays[..., 1]) / (2 * dth)
 
     # dtau_dra and dtau_ddec axes = (time, ant1, ant2) where ant1 is just geocenter
-    # partials axes = (ra or dec, D or DR, time, ant1, ant2)
-
-    assert_allclose(dtau_dra[:, 0, :], partials[0, 0, :, 0, :], atol=1e-6)
-    assert_allclose(dtau_ddec[:, 0, :], partials[1, 0, :, 0, :], atol=1e-6)
+    atol = 1e-6 * un.s / un.rad
+    assert_quantity_allclose(dtau_dra[:, 0, :], partials['dD_dRA'][:, 0, :], atol=atol)
+    assert_quantity_allclose(dtau_ddec[:, 0, :], partials['dD_dDEC'][:, 0, :], atol=atol)
 
 
 def test_errors(params_all):
@@ -366,10 +369,9 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     impath = run_difxcalc(calcname, verbose=False)
 
     im_obj = CalcReader(impath)
-
     times = Time(quants1['times'])
 
-    delays = quants1['delay'] * (-1e6)
+    delays = -quants1['delay'].to_value('us')# * (-1e6)
     im_dels = np.zeros_like(delays)
     for ti, tt in enumerate(times):
         for si in range(10):
@@ -378,7 +380,7 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
                 # This is because the zeroth source is treated as the pointing center.
                 im_dels[ti, 0, ai, si] = im_obj.delay(ai, tt, si + 1)
 
-    # Tolerance of 1 nanosecond. Acceptable, considering loss of precision in writing to file?
+    # TODO Setting tolerance to 1 ns. Is this acceptable, considering loss of precision in file write?
     assert_allclose(delays, im_dels, atol=1e-3)
 
 

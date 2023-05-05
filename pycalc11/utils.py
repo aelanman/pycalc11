@@ -50,7 +50,7 @@ def astropy_delay(src, time, ant0, ant1):
 
     Returns
     -------
-    float:
+    astropy.Quantity:
         Geometric delay in microseconds
     """
     with ac.solar_system_ephemeris.set('jpl'):
@@ -65,7 +65,7 @@ def astropy_delay(src, time, ant0, ant1):
     dx = p1vec - p0vec
     delay0 = np.dot(dx, svec) / speed_of_light
 
-    return delay0.to_value('us')
+    return delay0.to('us')
 
 
 def astropy_delay_rate(src, time, ant0, ant1):
@@ -85,7 +85,7 @@ def astropy_delay_rate(src, time, ant0, ant1):
 
     Returns
     -------
-    float:
+    astropy.Quantity:
         Geometric delay rate in us Hz
     """
     with ac.solar_system_ephemeris.set('jpl'):
@@ -101,4 +101,4 @@ def astropy_delay_rate(src, time, ant0, ant1):
     bxw = -np.cross(dx, OMEGA_EARTH_ITRS)
     dr0 = np.dot(bxw, svec) / speed_of_light
 
-    return dr0.to_value("us Hz")
+    return dr0.to("us Hz")

@@ -38,6 +38,7 @@ astropy ``EarthLocation`` instances, source locations given as astropy ``SkyCoor
 instance, and duration as a float representing the length of the scan in minutes.::
 
     from pycalc11 import Calc
+    import numpy as np
     from astropy import coordinates as ac
     from astropy import units as un
     from astropy.time import Time
@@ -60,13 +61,13 @@ instance, and duration as a float representing the length of the scan in minutes
     n_srcs = 500    # Arbitrarily many. Previously limited to 300.
     srcs = ac.SkyCoord(
         ra=np.random.uniform(0, 360, n_srcs),
-        dec=np.random.uniform(-90,90, n_srcs)
+        dec=np.random.uniform(-90,90, n_srcs),
         unit='deg',
         frame='icrs',
     )
 
     source_coords = [s for s in srcs]
-    source_names = [f"src{si}" for si in range(nsrcs)]
+    source_names = [f"src{si}" for si in range(n_srcs)]
 
     # ------------
     # Initialize the Calc object.
@@ -77,8 +78,8 @@ instance, and duration as a float representing the length of the scan in minutes
         station_coords=site_locs,
         source_names=source_names,
         source_coords=source_coords,
-        time=time
-        duration_min=duration_min
+        time=time,
+        duration_min=duration_min,
     )
 
     # ------------

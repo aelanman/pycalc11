@@ -1,9 +1,10 @@
 
 import numpy as np
 import warnings
-from astropy.time import TimeDelta
+from astropy.time import Time, TimeDelta
 from astropy import coordinates as ac
 from astropy.constants import R_earth
+from astropy.units import Quantity
 from datetime import datetime
 
 from .utils import get_leap_seconds, iers_tab
@@ -180,7 +181,10 @@ class Calc:
             slc = np.s_[ii*e2m: ii*e2m + e2m, :, :, :]
             self._delay[slc] = calc.outputs.delay_f[:-1, :, :, 1:]   # Skip pointing source
             self._delay_rate[slc] = calc.outputs.rate_f[:-1, :, :, 1:]
-            self._partials[np.s_[:,:] + slc] = calc.outputs.partials_f[..., :-1, :, :, 1:]
+            self._partials["dD_dRA"][slc] = calc.outputs.partials_f[0, 0, :-1, :, :, 1:]
+            self._partials["dDR_dRA"][slc] = calc.outputs.partials_f[0, 1, :-1, :, :, 1:]
+            self._partials["dD_dDEC"][slc] = calc.outputs.partials_f[1, 0, :-1, :, :, 1:]
+            self._partials["dDR_dDEC"][slc] = calc.outputs.partials_f[1, 1, :-1, :, :, 1:]
             self._times[ii*e2m: ii*e2m + e2m] = [
                     np.datetime64(datetime(*t)) for t in calc.outputs.iymdhms_f[:-1]
             ]
@@ -351,7 +355,10 @@ class Calc:
         # These arrays collect results from all 2 min epochs.
         self._delay = np.zeros((Ntimes, Nstat1, Nstat2, Nsrcs))
         self._delay_rate = np.zeros((Ntimes, Nstat1, Nstat2, Nsrcs))
-        self._partials = np.zeros((2, 2, Ntimes, Nstat1, Nstat2, Nsrcs))
+        self._partials = np.zeros(
+            (Ntimes, Nstat1, Nstat2, Nsrcs),
+            dtype=np.dtype([("dD_dRA", "f8"), ("dDR_dRA", "f8"), ("dD_dDEC", "f8"), ("dDR_dDEC", "f8")])
+        )
         self._times = np.full(Ntimes, fill_value='NaT', dtype="<M8[us]")
         self._rerun = True
 
@@ -434,7 +441,7 @@ class Calc:
     @_state_dep
     def times(self):
         """List of times for time axis of delay/delay_rate/partials arrays."""
-        return self._times
+        return Time(self._times, format='datetime64', scale='utc')
 
     @property
     @_state_dep
@@ -446,9 +453,10 @@ class Calc:
         """
         # In baseline mode, the geocenter station is still in the arrays.
         if self.base_mode == 'baseline':
-            return self._delay[:, 1:, :, :]
+            val = self._delay[:, 1:, :, :]
         else:
-            return self._delay
+            val = self._delay
+        return Quantity(val, unit="s", copy=False)
 
     @property
     @_state_dep
@@ -459,24 +467,32 @@ class Calc:
         Axes: (time, ant1, ant2, source)
         """
         if self.base_mode == 'baseline':
-            return self._delay_rate[:, 1:, :, :]
+            val = self._delay_rate[:, 1:, :, :]
         else:
-            return self._delay_rate
+            val = self._delay_rate
+        return Quantity(val, unit="s Hz", copy=False)
 
     @property
     @_state_dep
     def partials(self):
         """
-        Partial derivatives of delay.
+        All partial derivatives of delay.
 
-        Returned axes: (ra/dec, d/dr, time, ant1, ant2, src))
-        Zeroth axis: (0) d/dra, (1) d/ddec
-        First axis: (0) delay, (1) delay rate
+        Structured array, with units:
+            dD_dRA = partial of delay wrt right ascension
+            dDR_dRA = partial of delay rate wrt right ascension
+            dD_dDEC = partial of delay wrt declination
+            dDR_dDEC = partial of delay rate wrt declination
         """
         if self.base_mode == 'baseline':
-            return self._partials[..., 1:, :, :]
+            vals = self._partials[..., 1:, :, :]
         else:
-            return self._partials
+            vals = self._partials
+        return Quantity(
+            vals,
+            unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"),
+            copy=False,
+        )
 
     @property
     def ant1_ind(self):
