@@ -17,6 +17,7 @@ from setuptools.config import read_configuration
 #    os.path.abspath(os.path.dirname(__file__)), 'difxcalc11'))
 BASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "calc11")
 SRCDIR = os.path.join(BASE, 'src')
+print(BASE)
 DATADIR = os.path.join(BASE, 'data')
 if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
     print(f"Failed to find source or data directories {SRCDIR} and {DATADIR}")
@@ -67,9 +68,6 @@ def get_extensions():
         name="pycalc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,
         include_dirs=[SRCDIR],
-        libraries=['gsl', 'gslcblas'],
-#        extra_f90_compile_args=['-fallow-argument-mismatch'],
-        #extra_f90_compile_args=['-Wno-argument-mismatch'],
         extra_f90_compile_args=['-Wargument-mismatch', '-fcheck=bounds', '-DF2PY_REPORT_ATEXIT'],
     )
 
