@@ -21,13 +21,16 @@ print(BASE)
 DATADIR = os.path.join(BASE, 'data')
 if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
     print(f"Failed to find source or data directories {SRCDIR} and {DATADIR}")
-#    print(INSTALL_HELP)
     sys.exit(1)
 
 MODNAME = 'calc11'
 F90_COMBINED = os.path.join(SRCDIR, MODNAME+'.f90')
 
 SRC_FILES = os.listdir(SRCDIR)
+# Move the file data_module.f to the start of SRC_FILES
+fn = "data_module.f"
+SRC_FILES.remove(fn)
+SRC_FILES.insert(0, fn)
 
 F_SOURCES = [os.path.join(SRCDIR, f) for f in SRC_FILES if f.endswith('.f')
              and not f.startswith('dmain')]
@@ -40,7 +43,6 @@ PARAM11 = os.path.join(SRCDIR, 'param11.i')
 DATA_FILES = [os.path.join(BASE, 'data', f) for f in os.listdir(DATADIR)
               if f.endswith(('.dat', '.coef')) or sys.byteorder in f]
 DE421_FILE_NAME = [f for f in os.listdir(DATADIR) if sys.byteorder in f][0]
-
 
 def get_extensions():
     from distutils.dep_util import newer
