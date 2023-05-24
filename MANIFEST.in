@@ -1,6 +1,5 @@
-include README.rst
-include setup.py
-recursive-include calc11
+recursive-include pycalc11/tests test*.py
+recursive-include calc11 *
 
 exclude .gitignore
 prune difxcalc11
