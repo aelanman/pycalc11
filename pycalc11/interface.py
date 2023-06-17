@@ -1,5 +1,6 @@
 
 import numpy as np
+import sys
 import warnings
 from astropy.time import Time, TimeDelta
 from astropy import coordinates as ac
@@ -9,6 +10,7 @@ from datetime import datetime
 
 from .utils import get_leap_seconds, iers_tab
 from . import calc11 as calc
+from .data import DATA_PATH
 
 
 class Calc:

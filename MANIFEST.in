@@ -1,8 +1,8 @@
 recursive-include pycalc11/tests test*.py
-recursive-include calc11 *
+include pycalc11/data/*
 
 exclude .gitignore
 prune difxcalc11
 prune build
 
-global-exclude *.pyf *.o
+global-exclude *.pyf *.pyc *.o

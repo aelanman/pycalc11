@@ -1,20 +1,24 @@
 [build-system]
-requires = ["setuptools>=61.2", "wheel", "scikit-build", "cmake>=3.12", "numpy>=1.21,<1.24"]
+requires = ["setuptools>=61.2", "wheel", "scikit-build", "cmake>=3.12", "numpy>=1.21,<1.24", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycalc11"
-version = "0.1"
+#version = "0.1"
+dynamic = ["version"]
 authors = [
     {name = "Marten H. van Kerkwijk", email = "mhvk@astro.utoronto.ca"},
     {name = "Chenchong Zhu"},
-    {name = "Adam E. Lanman"},
+    {name = "Adam E. Lanman", email = "adam.lanman@mcgill.ca"},
 ]
 license = {text = "MIT"}
 description = "Python wrappers for CALC11"
 urls = {Homepage = "https://github.com/aelanman/pycalc11"}
 requires-python = ">=3.8"
 dependencies = ["numpy>=1.21,<1.24"]
+
+[tool.setuptools_scm]
+
 
 [project.readme]
 file = "README.rst"
@@ -26,7 +30,7 @@ include-package-data = true
 license-files = ["LICENSE"]
 
 [tool.setuptools.packages]
-find = {namespaces = false}
+find = {namespaces = false, where = ["."]}
 
 [tool.pytest.ini_options]
 testpaths = ['"pycalc11/tests"']
@@ -36,16 +40,12 @@ ignore = """
 E226,
 W503"""
 exclude = """
-baseband/conftest.py,baseband/version.py,baseband/__init__.py,
-baseband/_astropy_init.py,
 docs/conf.py,
 setup.py,
 __pycache__,build,dist,htmlcov,licenses"""
 
 [tool.pycodestyle]
 exclude = """
-baseband/conftest.py,baseband/version.py,baseband/__init__.py,
-baseband/_astropy_init.py,
 docs/conf.py,
 setup.py,
 __pycache__,build,dist,htmlcov,licenses"""
