@@ -6,7 +6,6 @@ project(calc11
   LANGUAGES C Fortran
   )
 
-add_subdirectory(calc11)
 
 find_package(Python 3.8 REQUIRED)
 find_package(PythonExtensions REQUIRED)
@@ -23,16 +22,18 @@ file(READ ${CMAKE_SOURCE_DIR}/calc11/src/param11.i.in CONTENTS)
 file(WRITE ${CMAKE_SOURCE_DIR}/calc11/src/param11.i ${CONTENTS})
 #file(WRITE ${CMAKE_SOURCE_DIR}/test.in ${CONTENTS})
 
-# TODO --  Generate combined f90 file in cmake build directory
-#
-
 
 set(f2py_module_name "calc11")
-set(fortran_src_file "${CMAKE_SOURCE_DIR}/calc11/src/calc11.f90")
+set(fortran_src_file "${CMAKE_BINARY_DIR}/calc11/src/calc11.f90")
 set(generated_module_file ${CMAKE_CURRENT_BINARY_DIR}/${f2py_module_name}${PYTHON_EXTENSION_MODULE_SUFFIX})
 
+add_subdirectory(calc11)
+
+# get include files
+file(GLOB includes ${CMAKE_SOURCE_DIR}"/calc11/src/*.i")
+list(PREPEND includes ${generated_module_file})
 add_custom_target(${f2py_module_name} ALL
-  DEPENDS ${generated_module_file}
+  DEPENDS ${includes}
   )
 
 add_custom_command(

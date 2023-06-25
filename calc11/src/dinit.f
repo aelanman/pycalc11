@@ -247,6 +247,7 @@
 
 !*************************************************************************
       SUBROUTINE dSITI(Kjob)
+      use datafiles
       IMPLICIT None
 !
 ! 3.    SITI
@@ -353,7 +354,8 @@
 !**         1. Intrvl(5,2) - First and last time tag of data in the current
 !                            data base. (First index: year, month, day,
 !                            hour, minute. Second index: first, last.)
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
+!      (Now pulled from datafiles module)
 !       Variables from:
 !           1. A_tilts   - Antenna tilts file name (default file).
 !           2. OPTL_file - Ocean pole tide loading file (default file).
@@ -1645,11 +1647,12 @@
 !*************************************************************************
 !
       SUBROUTINE dOCNIN(Kjob,Kerr)
+      use datafiles
       Implicit None
 !
       INCLUDE 'cmxst11.i'
 !
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
 !       1. OC_file - Name of the ocean loading coefficients file
 !
       Real*8           PI, TWOPI, HALFPI, CONVD, CONVDS, CONVHS, SECDAY
@@ -1820,6 +1823,7 @@
       End
 !*************************************************************************
       SUBROUTINE dANTILT(Kjob, Krr)
+      use datafiles
       Implicit None
 !
       INCLUDE 'cmxst11.i'
@@ -1831,7 +1835,7 @@
 !           2. Dbtilt(2,Max_Stat)  - Antenna fixed axis tilts, in arc-minutes.
 !                                    For alt-az mounts, 1 => East tilt,
 !                                    2 => North tilt.
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
 !        Variables 'from':
 !           1. A_tilts -  Ascii name of the antenna fixed axis tilts file.
 !
@@ -2002,11 +2006,12 @@
 
 !*************************************************************************
       SUBROUTINE dOPTLIN(Kjob, Kerr)
+      use datafiles
       Implicit None
 !
       INCLUDE 'cmxst11.i'
 !
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
 !       1. OPTL_file - Name of the ocean pole tide loading coefficients
 !                      file.
 !
