@@ -310,7 +310,7 @@ class Calc:
         calc.calc_input.pointingsrc = 1
 
         # As defined in dscan.f
-        calc.calc_input.intrvls2min = np.ceil(duration_min / 2 + 0.001) + 1
+        calc.calc_input.intrvls2min = np.ceil(duration_min / 2 + 0.001) + 1     # Number of 2 min intervals
         self._rerun = True
 
 

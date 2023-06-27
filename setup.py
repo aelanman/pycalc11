@@ -17,16 +17,20 @@ from setuptools.config import read_configuration
 #    os.path.abspath(os.path.dirname(__file__)), 'difxcalc11'))
 BASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "calc11")
 SRCDIR = os.path.join(BASE, 'src')
+print(BASE)
 DATADIR = os.path.join(BASE, 'data')
 if not all(os.path.isdir(p) for p in (SRCDIR, DATADIR)):
     print(f"Failed to find source or data directories {SRCDIR} and {DATADIR}")
-#    print(INSTALL_HELP)
     sys.exit(1)
 
 MODNAME = 'calc11'
 F90_COMBINED = os.path.join(SRCDIR, MODNAME+'.f90')
 
 SRC_FILES = os.listdir(SRCDIR)
+# Move the file data_module.f to the start of SRC_FILES
+fn = "data_module.f"
+SRC_FILES.remove(fn)
+SRC_FILES.insert(0, fn)
 
 F_SOURCES = [os.path.join(SRCDIR, f) for f in SRC_FILES if f.endswith('.f')
              and not f.startswith('dmain')]
@@ -39,7 +43,6 @@ PARAM11 = os.path.join(SRCDIR, 'param11.i')
 DATA_FILES = [os.path.join(BASE, 'data', f) for f in os.listdir(DATADIR)
               if f.endswith(('.dat', '.coef')) or sys.byteorder in f]
 DE421_FILE_NAME = [f for f in os.listdir(DATADIR) if sys.byteorder in f][0]
-
 
 def get_extensions():
     from distutils.dep_util import newer
@@ -67,9 +70,6 @@ def get_extensions():
         name="pycalc11.calc11",
         sources=[F90_COMBINED] + C_SOURCES,
         include_dirs=[SRCDIR],
-        libraries=['gsl', 'gslcblas'],
-#        extra_f90_compile_args=['-fallow-argument-mismatch'],
-        #extra_f90_compile_args=['-Wno-argument-mismatch'],
         extra_f90_compile_args=['-Wargument-mismatch', '-fcheck=bounds', '-DF2PY_REPORT_ATEXIT'],
     )
 

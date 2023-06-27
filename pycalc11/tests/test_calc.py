@@ -415,3 +415,9 @@ def test_coef_vals(params_vlbi):
         comp[:, ii] = OceanFiles.optl_data[keys][inds][ii].tolist()
 
     assert_allclose(comp, coefs)
+
+
+## TODO
+#   Test that epochs cover the requested scan times
+#   Fix tests with astropy comparison
+#   
