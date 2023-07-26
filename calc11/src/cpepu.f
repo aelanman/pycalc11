@@ -653,6 +653,7 @@
 !
 !************************************************************************
       SUBROUTINE STATE(ET2,LIST,PV,PNUT)
+      use datafiles
       Implicit None
 !
 ! THIS SUBROUTINE READS AND INTERPOLATES THE JPL PLANETARY EPHEMERIS FILE
@@ -748,7 +749,7 @@
 !  BL1,BL2 added for padding. Common STCOMX rearranged.
       LOGICAL*2 KM,BARY, BL1, BL2
 !
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
 !       Variables from:
 !         1. JPL_405 - Character string giving the complete path name of
 !                      the JPL DE405 ephemeris.

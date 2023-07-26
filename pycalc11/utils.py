@@ -10,7 +10,6 @@ from astropy import units as un
 from astropy.constants import c as speed_of_light
 from astropy.coordinates.earth import OMEGA_EARTH
 from multiprocessing import Process
-import pylab as pl
 
 
 OMEGA_EARTH_ITRS = np.array([0, 0, 1]) * OMEGA_EARTH

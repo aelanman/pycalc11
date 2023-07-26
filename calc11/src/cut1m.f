@@ -1251,6 +1251,7 @@
 !*************************************************************************
 !
       INTEGER*4 function get_leapsec(xjd,xleap)
+      use datafiles
       Implicit None
 !
 !     Routine to retrieve "leapsecond" (UTC step adjustment)
@@ -1286,7 +1287,7 @@
 !     -1201  Requested data is before first "leapsecond" in file.
 !     -1301  No data found in "leapsecond" file (EOF on first read).
 !
-      INCLUDE 'param11.i'
+!      INCLUDE 'param11.i'
 !
 !     Specifications:
 !

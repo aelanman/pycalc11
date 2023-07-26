@@ -6,11 +6,11 @@ This package provides a Python interface to running the CALC delay modeling tool
 astropy objects.
 
 CALC has a long history, originally written in Fortran 77 with parts updated into Fortran 90 over time. CALC aims to compute
-VLBI baseline delays to picosecond precision by incorporating general relativistic deflection from the Sun, Earth, and other planets,
-solid Earth and ocean tide loading, and atmospheric contributions [EUBANKS91]_.
+VLBI baseline delays to picosecond precision by incorporating general relativistic deflection from the Sun, Earth, and other planets, and including baseline shifts due to 
+solid Earth and ocean tide loading, and deflection due to atmospheric contributions [EUBANKS91]_.
 
 This repository carries a modified version of the CALC source code. The modifications enable easier operation
-as a library, rather than as a standalone program, and support array allocation for some arrays that were previously
+as a library, rather than as a standalone program, and support dynamic array allocation for some arrays that were previously
 fixed-size.
 
 
