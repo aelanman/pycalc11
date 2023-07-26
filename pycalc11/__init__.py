@@ -10,7 +10,7 @@ from . import calc11
 # Get JPL ephemeris data
 de421_url = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
 de421_path = download_file(de421_url, cache=True)
-calc11.datafiles.jpl_de421 = de421_path.ljust(128) 
+calc11.datafiles.jpl_de421 = de421_path.ljust(128)
 
 
 def _format(fname):
