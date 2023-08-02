@@ -23,7 +23,7 @@
 !
       COMMON/Calc_input/ Xleap_sec,                                     &
      &       JobID, NumScans, Numsrc, NumEpochs, NumPhCntr,PointingSrc, &
-     &       PhCntrNum, PhCntr, ScanNum, Intrvls2min,                   &
+     &       PhCntrNum, ScanNum, Intrvls2min,                   &
      &       StartYr, StartMo, StartDay, StartHr, StartMin, StartSec,   &
      &       ScanStrt, ScanDur, Sites, Axis, ScanID, ci6
       Real*8 Xleap_sec
@@ -31,7 +31,7 @@
       Integer*4 JobID, NumScans, NumEpochs, Numsrc
       Integer*4 StartYr, StartMo, StartDay, StartHr, StartMin, StartSec
       Integer*4 ScanStrt, ScanDur, ScanNum, NumPhCntr, PointingSrc,     &
-     &          PhCntrNum, PhCntr(500), Intrvls2min
+     &          PhCntrNum, Intrvls2min
       Character*4 Axis(MaxStat)
       Character*10 ScanID
       Character*6  ci6 

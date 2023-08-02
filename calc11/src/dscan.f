@@ -58,9 +58,9 @@
         PointingSrc  = -1
         NumPhCntr    = -1
         PhCntrNum    = -1
-        Do I = 1, 500
-         PhCntr(I)   = -1
-        Enddo
+        ! Do I = 1, 500
+        !  PhCntr(I)   = -1
+        ! Enddo
         Near_Far = 'Far-field '
 !
       If (Iscan .gt. 1) Go to 200
