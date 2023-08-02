@@ -1,6 +1,5 @@
 
 import numpy as np
-import sys
 import warnings
 from astropy.time import Time, TimeDelta
 from astropy import coordinates as ac
@@ -10,7 +9,6 @@ from datetime import datetime
 
 from .utils import get_leap_seconds, iers_tab
 from . import calc11 as calc
-from .data import DATA_PATH
 
 
 class Calc:
@@ -274,8 +272,8 @@ class Calc:
             calc.srcmod.lnstar[:, si] = np.frombuffer(bytes(name.ljust(20), encoding='utf-8'), dtype=np.int16)
 
         Nsrc = len(source_names)
-        calc.calc_input.phcntr[:Nsrc] = range(1, Nsrc+1)
-        calc.calc_input.phcntr[Nsrc:] = -1
+        calc.srcmod.phcntr[:Nsrc] = range(1, Nsrc+1)
+        calc.srcmod.phcntr[Nsrc:] = -1
 
         # The function call below causes a variety of different errors on shutdown:
         #   > corrupted_size vs. prev_size

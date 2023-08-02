@@ -1,6 +1,5 @@
 import os
 import sys
-import numpy as np
 from astropy.utils.data import download_file
 
 from .data import DATA_PATH

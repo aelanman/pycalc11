@@ -34,6 +34,7 @@
       CHARACTER(len=20), allocatable, dimension(:) :: SrcName
       Integer*4  Pmotion, Dpsec
       Integer*2, allocatable, dimension(:, :) :: LNSTAR
+      Integer*4, allocatable, dimension(:) :: PhCntr
 
       Integer*2  NUMSTR, i1dum
 

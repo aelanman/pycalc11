@@ -199,6 +199,7 @@
         DEALLOCATE(D_psec)
         DEALLOCATE(SrcName)
         DEALLOCATE(LNSTAR)
+        DEALLOCATE(PhCntr)
       ENDIF
 
       ALLOCATE(RADEC(2, Nsrc), source=real(0.0, 8))
@@ -207,6 +208,7 @@
       ALLOCATE(D_psec(Nsrc), source=real(0.0, 8))
       ALLOCATE(SrcName(Nsrc), source=repeat(" ", 20))
       ALLOCATE(LNSTAR(10, Nsrc), source=int(0, 2))
+      ALLOCATE(PhCntr(Nsrc), source=0)
 
       END SUBROUTINE alloc_source_arrays
 !*************************************************************************
