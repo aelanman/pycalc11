@@ -265,7 +265,7 @@ class Calc:
         calc.alloc_source_arrays(self.nsrcs)
         calc.srcmod.numstr = len(source_names)
         for si, (coord, name) in enumerate(zip(source_coords, source_names)):
-            calc.srcmod.radec[:, si] = [coord.ra.rad, coord.dec.rad]
+            calc.srcmod.radec[:, si] = np.round([coord.ra.rad, coord.dec.rad], decimals=10)
             # calc stores the source names as both a character array and an integer array, using an
             # EQUIVALENCE to map the memory spaces together (the same bytes are interpreted as integers
             # in LNSTAR). The following stores the source names correctly in the LNSTAR integer array.
@@ -324,18 +324,18 @@ class Calc:
             EOPs will be computed for (time, time+1d, time+2d).
         """
         _times = time + TimeDelta(range(2), format='jd')
-        jd = [np.floor(tt.jd) for tt in _times]
+        mjd = [np.floor(tt.mjd) for tt in _times]
         tai_utc = [get_leap_seconds(tt) for tt in _times]
         ut1_utc = [tt.delta_ut1_utc.reshape(1)[0] for tt in _times]
         xy = [[z.to_value('milliarcsecond') for z in iers_tab.pm_xy(tt)] for tt in _times]
 
-        Nerp = 2
-        Uintv = 1
-        xjds = jd[0] - (Nerp * Uintv) / 2
-        calc.wobcm.wobif = [xjds, Uintv, Nerp]     # Wobble info
+        eoptag = mjd
+        numeop = len(eoptag)
+        calc.ut1cm.ut1if = [eoptag[0] + 2400000.5, eoptag[1] - eoptag[0], numeop, 1]
+        calc.wobcm.wobif = [eoptag[0] + 2400000.5, eoptag[1] - eoptag[0], numeop]
         calc.wobcm.xywob[:, :2] = np.transpose(xy)
-        calc.ut1cm.ut1if = [xjds, Uintv, Nerp, 1.0]
-        calc.ut1cm.ut1pt[:2] = [tai_utc[ti] - ut1_utc[ti] for ti in range(2)]
+        # Rounded to match difxcalc's internal value
+        calc.ut1cm.ut1pt[:2] = np.round([tai_utc[ti] - ut1_utc[ti] for ti in range(2)], decimals=8)
         calc.calc_input.xleap_sec = tai_utc[0]
         self._rerun = True
 
@@ -515,13 +515,38 @@ class Calc:
     @property
     def stat_coords(self):
         """Station coordinates in ITRF."""
-        return calc.sitcm.sitxyz[:, 1:self.nants+1]
+        return Quantity(
+            calc.sitcm.sitxyz[:, 1:self.nants+1],
+            unit='m',
+            copy=False,
+        )
 
     @property
     def src_coords(self):
-        """Source coordinates in ICRS ra/dec in radians."""
-        return calc.srcmod.radec
+        """Source coordinates in ICRS ra/dec"""
+        return ac.Angle(
+            calc.srcmod.radec,
+            unit='rad',
+            copy=False,
+        )
 
+    @property
+    def src_ra(self):
+        """Source right ascension in ICRS"""
+        return ac.Longitude(
+            calc.srcmod.radec[0],
+            unit='rad',
+            copy=False,
+        )
+
+    @property
+    def src_dec(self):
+        """Source declination in ICRS"""
+        return ac.Latitude(
+            calc.srcmod.radec[1],
+            unit='rad',
+            copy=False,
+        )
 
 
 class OceanFiles:
