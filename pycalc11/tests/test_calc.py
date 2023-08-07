@@ -1,7 +1,7 @@
 
 import numpy as np
 from astropy import coordinates as ac
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 from astropy import units as un
 from astropy.tests.helper import assert_quantity_allclose
 from numpy.testing import assert_allclose, assert_array_equal
@@ -173,21 +173,29 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
                                            dry_atm=atmo, wet_atm=atmo)
     # TODO -- Fix so these compare properly
     #assert compare_dicts(c0, c1)
-    for k, qi in quants1.items():
-        if k == "times":
-            assert np.all(np.abs(quants0[k] - qi) < np.timedelta64('1', 'us'))
-        elif k == "partials":
-            for nm in qi.dtype.names:
-                assert_quantity_allclose(quants0[k][nm], qi[nm], rtol=1e-1)
-        else:
-            assert_quantity_allclose(quants0[k], qi, rtol=1e-1)
 
+    quantities = ['delay', 'delay_rate', 'partials', 'times']
+    atols = {
+        'delay': 1 * un.ns,
+        'delay_rate': 1e-9 * un.s * un.Hz,
+    }
+
+    for k, atol in atols.items():
+        assert_quantity_allclose(quants0[k], quants1[k], atol=atol)
+    for nm in quants0['partials'].dtype.names:
+        if 'dDR' in nm:
+            atol = atols['delay_rate'] / un.rad
+        else:
+            atol = atols['delay'] / un.rad
+        assert_quantity_allclose(quants0['partials'][nm], quants1['partials'][nm], atol=atol)
+
+        # TODO -- compare times as well (was matching perfectly)
 
 def test_calc_props(params_vlbi):
 #   Calc attributes match passed params
     ci = Calc(**params_vlbi)
     ra, dec = ci.src_coords
-    srcs = ac.SkyCoord(ra, dec, unit='rad', frame='icrs')
+    srcs = ac.SkyCoord(ra, dec, frame='icrs')
     psrcs = ac.SkyCoord(params_vlbi['source_coords'])
 
     # Source positions
@@ -358,6 +366,8 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     params_vlbi['source_names'] = params_vlbi['source_names'][:10]
     params_vlbi['source_coords'] = params_vlbi['source_coords'][:10]
 
+    params_vlbi['duration_min'] = 20
+
     quantities = ['delay', 'delay_rate', 'partials', 'times']
     ci = Calc(**params_vlbi, base_mode='geocenter', dry_atm=False, wet_atm=False)
     ci.run_driver()
@@ -380,8 +390,8 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
                 # This is because the zeroth source is treated as the pointing center.
                 im_dels[ti, 0, ai, si] = im_obj.delay(ai, tt, si + 1)
 
-    # TODO Setting tolerance to 1 ns. Is this acceptable, considering loss of precision in file write?
-    assert_allclose(delays, im_dels, atol=1e-3)
+    # Tolerance of picoseconds
+    assert_allclose(delays, im_dels, atol=1e-6)
 
 
 def test_coef_vals(params_vlbi):
