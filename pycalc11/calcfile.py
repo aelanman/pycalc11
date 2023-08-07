@@ -97,11 +97,11 @@ def make_calc(station_coords, station_names, source_coords,
     lines.append("NUM EOPS: {:d}".format(len(times)))
     for ti in range(len(times)):
         newlines = [
-            "EOP {:d} TIME (mjd):   {:.0f}".format(ti, mjd[ti]),
+            "EOP {:d} TIME (mjd):{:.0f}".format(ti, mjd[ti]),
             "EOP {:d} TAI_UTC (sec):{:.0f}".format(ti, tai_utc[ti]),
-            "EOP {:d} UT1_UTC (sec): {:.10f}".format(ti, ut1_utc[ti]),
-            "EOP {:d} XPOLE (arcsec): {:.10f}".format(ti, xy[ti][0]),
-            "EOP {:d} YPOLE (arcsec): {:.10f}".format(ti, xy[ti][1]),
+            "EOP {:d} UT1_UTC (sec):{:.8f}".format(ti, ut1_utc[ti]),
+            "EOP {:d} XPOLE (arcsec):{:.10f}".format(ti, xy[ti][0]),
+            "EOP {:d} YPOLE (arcsec):{:.10f}".format(ti, xy[ti][1]),
         ]
         lines.extend(newlines)
 
@@ -114,8 +114,8 @@ def make_calc(station_coords, station_names, source_coords,
     for si, (coord, name) in enumerate(zip(source_coords, source_names)):
         newlines = [
             "SOURCE {:d} NAME:      {}".format(si, name),
-            "SOURCE {:d} RA:        {:.8f}".format(si, coord.ra.rad),      # radians
-            "SOURCE {:d} DEC:       {:.8f}".format(si, coord.dec.rad),      # radians
+            "SOURCE {:d} RA:        {:.10f}".format(si, coord.ra.rad),      # radians
+            "SOURCE {:d} DEC:       {:.10f}".format(si, coord.dec.rad),      # radians
             "SOURCE {:d} CALCODE:   B".format(si),
             "SOURCE {:d} QUAL:      0".format(si),
         ]
