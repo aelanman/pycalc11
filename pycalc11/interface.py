@@ -6,7 +6,7 @@ from astropy import coordinates as ac
 from astropy.constants import R_earth
 from astropy.units import Quantity
 from datetime import datetime
-
+from scipy.interpolate import CubicSpline as CubicSpline
 from .utils import get_leap_seconds, iers_tab
 from . import calc11 as calc
 
@@ -190,6 +190,19 @@ class Calc:
             ]
 
         self._rerun = False
+
+    def interpolate_delays(self):
+        # Note–I'm not sure if we want this to be just a setter function instead
+        """ Interpolates delays along the time axis. 
+        Returns a cubic spline that should be called with the parameter dt where dt is the time in seconds
+        between self.times[0] and the time the delays should be evaluated.
+        For example, to evaluate the delay at time t_0, make the call
+        x=(t_0-ci.times[0]).sec 
+        spl(x)
+        """
+        spl = CubicSpline((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
+        self.delays_dt=spl 
+        return spl
 
     def reset(self):
         """Reset all common block items that were not initialized at startup."""
