@@ -232,4 +232,3 @@ class CalcReader:
             self.delay(ant2, time, src_num, scan=scan)
             - self.delay(ant1, time, src_num, scan=scan)
         )
-
