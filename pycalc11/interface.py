@@ -191,20 +191,23 @@ class Calc:
         self._rerun = False
 
     def interpolate_delays(self, t_0): 
-        """ Evaluates the delays at an absolute time t_0"""
+        """ Evaluates the delays at an absolute time t_0 by calculating an akima spline and interpolating delays along the time axis. 
+        The inputs to the akima spline is the time in seconds between self.times[0] and the time the delays should be evaluated.
+        Parameters
+        -----------------
+        t_0 : astropy.time.Time
+            Absolute time at which delays are to be evaluated
+        Returns
+        -----------
+        the delays in seconds evaluated at t_0
+        """
         x=(t_0-self.times[0]).sec 
         return self.delays_dt(x)
 
+
+
     @property
     def delays_dt(self):
-        """ Interpolates delays along the time axis. 
-        Calculates an akima spline that should be called with the parameter dt where dt is the time in seconds.
-        between self.times[0] and the time the delays should be evaluated.
-        For example, to evaluate the delay at time t_0, make the call
-        x=(t_0-ci.times[0]).sec 
-        spl=calc.delays_dt
-        spl(x)
-        """
         return Akima1DInterpolator((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
 
     def reset(self):
