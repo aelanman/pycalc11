@@ -190,16 +190,22 @@ class Calc:
 
         self._rerun = False
 
-    def interpolate_delays(self):
+    def interpolate_delays(self, t_0): 
+        """ Evaluates the delays at an absolute time t_0"""
+        x=(t_0-self.times[0]).sec 
+        return self.delays_dt(x)
+
+    @property
+    def delays_dt(self):
         """ Interpolates delays along the time axis. 
         Calculates an akima spline that should be called with the parameter dt where dt is the time in seconds.
         between self.times[0] and the time the delays should be evaluated.
         For example, to evaluate the delay at time t_0, make the call
         x=(t_0-ci.times[0]).sec 
+        spl=calc.delays_dt
         spl(x)
         """
-        spl = Akima1DInterpolator((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
-        self.delays_dt=spl 
+        return Akima1DInterpolator((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
 
     def reset(self):
         """Reset all common block items that were not initialized at startup."""
