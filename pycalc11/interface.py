@@ -6,10 +6,9 @@ from astropy import coordinates as ac
 from astropy.constants import R_earth
 from astropy.units import Quantity
 from datetime import datetime
-
+from scipy.interpolate import Akima1DInterpolator as Akima1DInterpolator
 from .utils import get_leap_seconds, iers_tab
 from . import calc11 as calc
-
 
 class Calc:
     """
@@ -190,6 +189,26 @@ class Calc:
             ]
 
         self._rerun = False
+
+    def interpolate_delays(self, t_0): 
+        """ Evaluates the delays at an absolute time t_0 by calculating an akima spline and interpolating delays along the time axis. 
+        The inputs to the akima spline is the time in seconds between self.times[0] and the time the delays should be evaluated.
+        Parameters
+        -----------------
+        t_0 : astropy.time.Time
+            Absolute time at which delays are to be evaluated
+        Returns
+        -----------
+        the delays in seconds evaluated at t_0
+        """
+        x=(t_0-self.times[0]).sec 
+        return self.delays_dt(x)
+
+
+
+    @property
+    def delays_dt(self):
+        return Akima1DInterpolator((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
 
     def reset(self):
         """Reset all common block items that were not initialized at startup."""
