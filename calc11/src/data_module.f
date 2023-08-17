@@ -33,10 +33,11 @@
       Real*8     CD, CRA, SD, SRA
       CHARACTER(len=20), allocatable, dimension(:) :: SrcName
       Integer*4  Pmotion, Dpsec
+      Integer(4) NUMSTR
       Integer*2, allocatable, dimension(:, :) :: LNSTAR
       Integer*4, allocatable, dimension(:) :: PhCntr
 
-      Integer*2  NUMSTR, i1dum
+      Integer*2 i1dum
 
       end module srcmod
 

@@ -190,7 +190,7 @@
       SUBROUTINE alloc_source_arrays(Nsrc)
       use srcmod
       IMPLICIT None
-      Integer*2 Nsrc
+      integer*4, intent(in) :: Nsrc
 
       NumStr = Nsrc
 
@@ -225,7 +225,7 @@
       ! This subroutine needs to be run after allocating LNSTAR
       ! TODO -- Still not working right
 
-      integer*2, intent(in) :: Nsrc
+      integer*4, intent(in) :: Nsrc
       integer*2 ii, jj, val
       character(2) buckets(10)
       character(30) recv
