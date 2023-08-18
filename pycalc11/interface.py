@@ -147,6 +147,10 @@ class Calc:
         # Add geocenter station
         self._add_geocenter()
 
+        # TODO --> Need to be able to reset these things
+        #   > Def a function to deallocate arrays fortran-side
+        #   > Run that and this on reset
+        #   > Probably other things need to be re-initialized if other stuff changes.
         self.alloc_out_arrays()
 
         # Check ocean loading params are available
