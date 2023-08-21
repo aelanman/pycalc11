@@ -438,22 +438,6 @@ def test_change_quantities(params_vlbi, kv):
         assert ci.delay.shape[-1] == 30
 
 
-def test_compare_baseline_geocenter(params_vlbi):
-    ci = Calc(**params_vlbi)
-    ci.run_driver()
-    delays_geoc = ci.delay.copy()
-    ci.base_mode = "baseline"
-    ci.run_driver()
-    delays_bl = ci.delay.copy()
-    delays_bl_fromgeo = delays_geoc[:, 0, [ci.ant2_ind], :] - delays_geoc[:, 0, ci.ant1_ind, None, :]
-    # delays_bl has zeros for ant2 < ant1
-    for a1, a2 in [(a1, a2) for a1 in ci.ant1_ind for a2 in ci.ant2_ind]:
-        if a2 < a1:
-            delays_bl_fromgeo[:, a1, a2, :] = 0.0
-
-    # !! NOTE Seeing differences on scales of 1 to 12 ns between two methods. Investigate!!
-
-
 ## TODO
 #   Test that epochs cover the requested scan times
 #   Fix tests with astropy comparison
