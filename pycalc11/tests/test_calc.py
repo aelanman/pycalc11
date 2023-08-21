@@ -420,6 +420,7 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
     with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
         ci = Calc(**params_vlbi)
 
     nants = len(params_vlbi["station_coords"])
@@ -478,7 +479,13 @@ def test_change_quantities(params_vlbi, kv):
         assert ci.nsrcs == 30
         assert ci.delay.shape[-1] == 30
 
-
-
-## TODO
-#   Test that epochs cover the requested scan times
+def test_epochs():
+    # Check that scan covers requested time
+    pars = make_params(nsrcs=10, duration_min=60)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        ci = Calc(**pars)
+    ci.run_driver()
+    t0 = pars["start_time"]
+    t1 = t0 + TimeDelta(3600, format='sec')
+    assert ci.times.min() <= t0 and t1 <= ci.times.max()

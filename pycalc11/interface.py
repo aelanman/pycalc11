@@ -135,9 +135,6 @@ class Calc:
         # Add geocenter station
         self._add_geocenter()
 
-        # Check ocean loading params are available
-        OceanFiles.check_sites(self.station_names)
-
         calc.dinitl(1)
 
     def parse_calcfile(self, calcfile):
@@ -440,6 +437,9 @@ class Calc:
         for ti in range(self.nants):
             # Offset of 1 to account for zeroth site being the geocenter
             calc.calc_input.sites[ti+1] = np.bytes_(tnames[ti].ljust(10))
+
+        # Check ocean loading params are available
+        OceanFiles.check_sites(self.station_names)
         self._rerun = True
 
     @property
