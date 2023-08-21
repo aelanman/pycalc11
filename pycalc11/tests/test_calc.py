@@ -99,15 +99,11 @@ def make_params(nsrcs=305, duration_min=10):
     )
     srcs = srcs.transform_to(ac.ICRS())
 
-    source_coords = [s for s in srcs]
-    source_names = [f"src{si}" for si in range(nsrcs)]
-
     kwargs = {
         "station_coords": site_locs,
         "station_names": site_names,
-        "source_coords": source_coords,
-        "source_names": source_names,
-        "time": time,
+        "source_coords": srcs,
+        "start_time": time,
         "duration_min": duration_min,
     }
 
@@ -131,7 +127,6 @@ def params_vlbi():
 def run_calc_2x(calcf_kwargs={}, calcfile_name="temp.calc", base_mode="geocenter",
                dry_atm=False, wet_atm=False):
 
-    # 0 = calc file, 1 = keywords
     quantities = ['delay', 'delay_rate', 'partials', 'times']
 
     # Run with keywords
@@ -156,7 +151,7 @@ def test_reset(params_vlbi):
     stat0 = get_mod_state(calc)
     ci = Calc(**params_vlbi)
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)
-    ci.reset()
+    ci._reset()
     stat1 = get_mod_state(calc)
 
     res = compare_dicts(stat0, stat1)
@@ -171,17 +166,19 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
     quants0, quants1, c0, c1 = run_calc_2x(calcf_kwargs=params_vlbi,
                                            calcfile_name=calcname,
                                            dry_atm=atmo, wet_atm=atmo)
+
     # TODO -- Fix so these compare properly
     #assert compare_dicts(c0, c1)
 
     quantities = ['delay', 'delay_rate', 'partials', 'times']
     atols = {
-        'delay': 1 * un.ns,
-        'delay_rate': 1e-9 * un.s * un.Hz,
+        'delay': 0.01 * un.ns,
+        'delay_rate': 1e-11 * un.s * un.Hz,
     }
 
-    for k, atol in atols.items():
-        assert_quantity_allclose(quants0[k], quants1[k], atol=atol)
+    assert_quantity_allclose(quants0['delay'], quants1['delay'], atol=0.01*un.ns)
+    assert_quantity_allclose(quants0['delay_rate'], quants1['delay_rate'], atol=1e-11*un.s*un.Hz)
+
     for nm in quants0['partials'].dtype.names:
         if 'dDR' in nm:
             atol = atols['delay_rate'] / un.rad
@@ -189,13 +186,13 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
             atol = atols['delay'] / un.rad
         assert_quantity_allclose(quants0['partials'][nm], quants1['partials'][nm], atol=atol)
 
-        # TODO -- compare times as well (was matching perfectly)
+    assert np.all(quants0['times'] == quants1['times'])
+
 
 def test_calc_props(params_vlbi):
 #   Calc attributes match passed params
     ci = Calc(**params_vlbi)
-    ra, dec = ci.src_coords
-    srcs = ac.SkyCoord(ra, dec, frame='icrs')
+    srcs = ci.source_coords
     psrcs = ac.SkyCoord(params_vlbi['source_coords'])
 
     # Source positions
@@ -203,7 +200,7 @@ def test_calc_props(params_vlbi):
     assert_allclose(srcs.dec.rad, psrcs.dec.rad)
 
     # Station positions
-    stats = [ac.EarthLocation.from_geocentric(*c, unit='m') for c in ci.stat_coords.T]
+    stats = [ac.EarthLocation.from_geocentric(*c, unit='m') for c in ci.station_coords.T]
     assert all([stats[ci] == loc for ci, loc in enumerate(params_vlbi['station_coords'])])
 
 
@@ -218,7 +215,7 @@ def test_kwd_override(params_all, tmpdir):
     stat_nmes = params_all['station_names'][:-1]
 
     ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
-    assert ci.stat_coords.shape[1] == len(stat_locs) == 8
+    assert ci.station_coords.shape[1] == len(stat_locs) == 8
 
 
 @pytest.mark.skip("Can't set tolerance due to some systematic with astropy."
@@ -244,7 +241,7 @@ def test_ddr_vals(base_mode, params_vlbi):
             for si in range(nstat):
                 ap_del = astropy_delay(srcs, tt, st_locs[si], gc)
                 ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc)
-                ra,dec = ci.src_coords
+                ra,dec = ci.source_coords
                 assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, rtol=0.05)
                 assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], rtol=0.05)
         if base_mode == 'baseline':
@@ -285,8 +282,8 @@ def test_oc_warnings(params_all):
     #   ocean pole tide loading coefficients file
     # calc.sitcm.oc_coefs_found[1, ii] == 1 if calc.calc_input.sites[ii] found in
     #   ocean loading data file.
-    oc_bad = ci.stat_names[~calc.sitcm.oc_coefs_found[1][1:ci.nants+1].astype(bool)]
-    optl_bad = ci.stat_names[~calc.sitcm.oc_coefs_found[0][1:ci.nants+1].astype(bool)]
+    oc_bad = ci.station_names[~calc.sitcm.oc_coefs_found[1][1:ci.nants+1].astype(bool)]
+    optl_bad = ci.station_names[~calc.sitcm.oc_coefs_found[0][1:ci.nants+1].astype(bool)]
 
     for l in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
         l.sort()
@@ -322,11 +319,9 @@ def test_partials_calc(params_vlbi):
         dec=[c_dec, c_dec - dth, c_dec + dth, c_dec, c_dec],
         unit='rad', frame='icrs'
     )
-    src_names = np.arange(srcs.size).astype(str)
 
     pars = deepcopy(params_vlbi)
     pars['source_coords'] = srcs
-    pars['source_names'] = src_names
 
     ci = Calc(**pars, dry_atm=False, wet_atm=False)
     ci.run_driver()
@@ -363,7 +358,6 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 
     # Difxcalc can't handle more than 300 sources
     # Just keep ten sources for this test.
-    params_vlbi['source_names'] = params_vlbi['source_names'][:10]
     params_vlbi['source_coords'] = params_vlbi['source_coords'][:10]
 
     params_vlbi['duration_min'] = 20
@@ -396,7 +390,7 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 
 def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
-    with warnings.catch_warnings(record=True) as warning_list:
+    with warnings.catch_warnings():
         ci = Calc(**params_vlbi)
 
     nants = len(params_vlbi['station_coords'])
@@ -427,7 +421,39 @@ def test_coef_vals(params_vlbi):
     assert_allclose(comp, coefs)
 
 
+@pytest.mark.parametrize("kv", make_params(nsrcs=30).items())
+def test_change_quantities(params_vlbi, kv):
+    ci = Calc(**params_vlbi)
+    ci.run_driver()
+    key, val = kv
+    setattr(ci, key, val)
+    assert ci._rerun
+
+    with pytest.raises(ValueError, match="Need to rerun adrivr before accessing data. "):
+        print(ci.delay)
+
+    if key == 'source_coords':
+        ci.run_driver()
+        assert ci.nsrcs == 30
+        assert ci.delay.shape[-1] == 30
+
+
+def test_compare_baseline_geocenter(params_vlbi):
+    ci = Calc(**params_vlbi)
+    ci.run_driver()
+    delays_geoc = ci.delay.copy()
+    ci.base_mode = "baseline"
+    ci.run_driver()
+    delays_bl = ci.delay.copy()
+    delays_bl_fromgeo = delays_geoc[:, 0, [ci.ant2_ind], :] - delays_geoc[:, 0, ci.ant1_ind, None, :]
+    # delays_bl has zeros for ant2 < ant1
+    for a1, a2 in [(a1, a2) for a1 in ci.ant1_ind for a2 in ci.ant2_ind]:
+        if a2 < a1:
+            delays_bl_fromgeo[:, a1, a2, :] = 0.0
+
+    # !! NOTE Seeing differences on scales of 1 to 12 ns between two methods. Investigate!!
+
+
 ## TODO
 #   Test that epochs cover the requested scan times
 #   Fix tests with astropy comparison
-#   

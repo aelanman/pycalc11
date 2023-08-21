@@ -438,9 +438,9 @@
       DO Itime = 1, Epoch2m                     ! Start of epoch loop
 
 !  Define UTC for this epoch
-        If (Itime .gt. 1) TAG_SEC = TAG_SEC +  d_interval     ! seconds
+       If (Itime .gt. 1) TAG_SEC = TAG_SEC +  d_interval     ! seconds
        IF (TAG_SEC .ge. 59.999999999D0) Call FixEpoch2(JTAG, TAG_SEC)
-        TAGSEC = TAG_SEC
+       TAGSEC = TAG_SEC
 !
 !  Compute the Julian date at 0 hours UTC for the year, month, day.
 !  Use function JDY2K to convert year, month, day to Julian date.
