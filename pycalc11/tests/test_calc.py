@@ -430,4 +430,4 @@ def test_coef_vals(params_vlbi):
 ## TODO
 #   Test that epochs cover the requested scan times
 #   Fix tests with astropy comparison
-#   
+#
