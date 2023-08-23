@@ -430,7 +430,6 @@ class Calc:
     @station_names.setter
     def station_names(self, station_names):
         if station_names is None:
-            #calc.calc_input.sites[1:] = b""
             return
         calc.sitcm.numsit = len(station_names) + 1
         tnames = [s.upper() for s in station_names]
@@ -454,7 +453,6 @@ class Calc:
     @station_coords.setter
     def station_coords(self, tpos):
         if tpos is None:
-            #calc.sitcm.sitxyz[()] = 0.0
             return
         calc.sitcm.numsit = len(tpos) + 1
         for ti in range(self.nants):
