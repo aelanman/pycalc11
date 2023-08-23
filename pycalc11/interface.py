@@ -146,7 +146,7 @@ class Calc:
 
         # Add geocenter station
         self._add_geocenter()
-            
+
         self.alloc_out_arrays()
 
         # Check ocean loading params are available
