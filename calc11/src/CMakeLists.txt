@@ -13,4 +13,3 @@ endforeach()
 foreach (inc ${includes})
   configure_file(${inc} ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 endforeach()
-

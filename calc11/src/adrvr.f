@@ -467,7 +467,7 @@
 !     for the partial derivative of the UTC time with respect to the atomic
 !     time (DUTCAT).
       CALL ATIME (UTC, XJD, AT, DUTCAT, TT)
-!
+
 !     Call CTIMG for the coordinate time fraction of the coordinate time day at
 !     site #1 (CT), the partial derivative of the atomic time with respect to
 !     the coordinate time (DATDCT), and the partial derivative of the long
@@ -497,7 +497,7 @@
 !
 !     Call NUTFA before NUTG and before UT1G to get epoch in centuries and
 !     the fundamental arguments for the nutation series.
-          CALL NUTFA (XJD, TT, CT, CENT, FA2K, FAD2K)
+      CALL NUTFA (XJD, TT, CT, CENT, FA2K, FAD2K)
 !
 !     Call UT1G for the UT1 fraction of the UT1 day (UT1) and for the partial
 !     derivative of the UT1 time with respect to the atomic time (DUT1AT).

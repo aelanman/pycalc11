@@ -9,7 +9,7 @@
 ! 1.1.1 CTIMG is the utility routine which computes the coordinate time fraction
 !       of the coordinate time day at observing site #1, the partial derivative
 !       of the atomic time with respect to the coordinate time, and the partial
-!       derivative of the long period terms in the 'AT mimus CT' offset with
+!       derivative of the long period terms in the 'AT minus CT' offset with
 !       respect to the coordinate time.
 !
 !       The algorithm is taken directly from the referenced Moyer paper. Moyer
@@ -21,7 +21,7 @@
 !       required inputs are the geocentric, crust fixed position of the station
 !       and the UTC and AT time tags. The second algorithm is implemented here.
 !
-!       NOTE 1. The algorithm calls for UT1, but UTC is used in its' place.
+!       NOTE 1. The algorithm calls for UT1, but UTC is used in its place.
 !       (Since 1972 UTC has been kept within 0.7 seconds of UT1).
 !
 !       NOTE 2. The equation numbers in the Moyer paper are identified below.

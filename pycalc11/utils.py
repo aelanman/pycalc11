@@ -1,15 +1,15 @@
 
 import numpy as np
-import warnings
 from datetime import datetime
-from astropy.time import Time, TimeDelta
-from astropy.utils import data
+import atexit
+import warnings
+from functools import partial
+from inspect import isclass, isfunction
+
 from astropy.utils import iers
 import astropy.coordinates as ac
-from astropy import units as un
 from astropy.constants import c as speed_of_light
 from astropy.coordinates.earth import OMEGA_EARTH
-from multiprocessing import Process
 
 
 OMEGA_EARTH_ITRS = np.array([0, 0, 1]) * OMEGA_EARTH
@@ -101,3 +101,66 @@ def astropy_delay_rate(src, time, ant0, ant1):
     dr0 = np.dot(bxw, svec) / speed_of_light
 
     return dr0.to("us Hz")
+
+prof = None
+def do_profiling(func_list=None, time=True, memory=False):
+    """
+    Run time or memory profiling on module functions.
+
+    Places a LineProfiler object in the module namespace, and registers its
+    dumping/printing functions to run at the end. When the Python environment closes,
+    the profiler functions print_stats (and dump_stats, if dump_raw is True) will
+    execute, saving profiler data to file.
+
+    Parameters
+    ----------
+    func_list: list
+        List of function names (strings) to profile.
+    time: bool
+        Enable line by line time profiling (Default True)
+    memory: bool
+        Enable line by line memory profiling (Default False)
+    """
+    global prof
+
+    if func_list is None:
+        func_list = ['run_driver', 'set_stations', 'set_sources', 'alloc_out_arrays', 'check_sites']
+
+    if memory and time:
+        warnings.warn("Cannot run memory and time profilers at the same time. Skipping profiling.")
+        return
+
+    if time:
+        from line_profiler import LineProfiler
+        prof = LineProfiler()
+        printfunc = prof.print_stats
+        ofname = "time_profile.out"
+
+    if memory:
+        from memory_profiler import LineProfiler, show_results
+        prof = LineProfiler()
+        printfunc = partial(show_results, prof)
+        ofname = "memory_profile.out"
+
+    import pycalc11 as _pycalc11
+
+    if prof is None:
+        warnings.warn("No profiling requested. Choose memory or time = True to use profiling.")
+        return
+
+    # Add module functions to profiler.
+    for mod_it in _pycalc11.__dict__.values():
+        if isfunction(mod_it):
+            if mod_it.__name__ in func_list:
+                prof.add_function(mod_it)
+        if isclass(mod_it):
+            for item in mod_it.__dict__.values():
+                if isfunction(item):
+                    if item.__name__ in func_list:
+                        prof.add_function(item)
+
+    # Write out profiling report to file.
+    ofile = open(ofname, 'w')
+    atexit.register(ofile.close)
+    atexit.register(printfunc, stream=ofile)
+    prof.enable_by_count()
