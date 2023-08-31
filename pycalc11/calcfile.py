@@ -14,7 +14,7 @@ from .utils import get_leap_seconds, iers_tab
 
 
 def make_calc(station_coords, station_names, source_coords,
-              source_names, time, duration_min, ofile_name=None,
+              start_time, duration_min, ofile_name=None,
               im_filename=None):
     """
     Make a .calc file as input to difxcalc.
@@ -27,9 +27,7 @@ def make_calc(station_coords, station_names, source_coords,
         Corresponding telescope names. These must be unique.
     source_coords: list of astropy.coordinates.SkyCoord
         Source positions to include.
-    source_names: list of str
-        Names of sources in the list.
-    time: astropy.time.Time
+    start_time: astropy.time.Time
         Start time of the observation.
     duration_min: float
         Duration of the observation in minutes.
@@ -56,8 +54,8 @@ def make_calc(station_coords, station_names, source_coords,
     lines = []
     newlines = [
         "JOB ID:             4",
-        "JOB START TIME:     {:.8f}".format(time.mjd),
-        "JOB STOP TIME:      {:.8f}".format(time.mjd + duration_min / (24 * 60)),
+        "JOB START TIME:     {:.8f}".format(start_time.mjd),
+        "JOB STOP TIME:      {:.8f}".format(start_time.mjd + duration_min / (24 * 60)),
         "DUTY CYCLE:         1.000",
         "OBSCODE:            DUMMY",
         "DIFX VERSION:       DIFX-2.6.2",
@@ -65,13 +63,13 @@ def make_calc(station_coords, station_names, source_coords,
         "SUBJOB ID:          0",
         "SUBARRAY ID:        0",
         "VEX FILE:           dummy.vex.obs",
-        "START MJD:          {:.8f}".format(time.mjd),
-        "START YEAR:         {:.0f}".format(time.datetime.year),
-        "START MONTH:        {:.0f}".format(time.datetime.month),
-        "START DAY:          {:.0f}".format(time.datetime.day),
-        "START HOUR:         {:.0f}".format(time.datetime.hour),
-        "START MINUTE:       {:.0f}".format(time.datetime.minute),
-        "START SECOND:       {:.0f}".format(time.datetime.second),
+        "START MJD:          {:.8f}".format(start_time.mjd),
+        "START YEAR:         {:.0f}".format(start_time.datetime.year),
+        "START MONTH:        {:.0f}".format(start_time.datetime.month),
+        "START DAY:          {:.0f}".format(start_time.datetime.day),
+        "START HOUR:         {:.0f}".format(start_time.datetime.hour),
+        "START MINUTE:       {:.0f}".format(start_time.datetime.minute),
+        "START SECOND:       {:.0f}".format(start_time.datetime.second),
         "IM FILENAME:        dummy.im",
         "FLAG FILENAME:      dummy.flag",
 
@@ -85,7 +83,7 @@ def make_calc(station_coords, station_names, source_coords,
     ut1_utc = []
     mjd = []
     xy = []
-    times = time + TimeDelta(range(2), format='jd')
+    times = start_time + TimeDelta(range(2), format='jd')
     for tt in times:
         mjd.append(np.floor(tt.mjd))
         tai_utc.append(get_leap_seconds(tt))
@@ -110,8 +108,9 @@ def make_calc(station_coords, station_names, source_coords,
     # ----------------------------
     # CALCODE = calibration code, typically A,B,C for calibrators, G for a gated pulsar, or blank for normal target
     # https://www.atnf.csiro.au/vlbi/dokuwiki/lib/exe/fetch.php/difx/difxuserguide.pdf
-    lines.append("NUM SOURCES: {:d}".format(len(source_names)))
-    for si, (coord, name) in enumerate(zip(source_coords, source_names)):
+    lines.append("NUM SOURCES: {:d}".format(len(source_coords)))
+    for si, coord in enumerate(source_coords):
+        name = f"src{si:d}"
         newlines = [
             "SOURCE {:d} NAME:      {}".format(si, name),
             "SOURCE {:d} RA:        {:.10f}".format(si, coord.ra.rad),      # radians
@@ -156,10 +155,10 @@ def make_calc(station_coords, station_names, source_coords,
         "SCAN 0 OBS MODE NAME:JWST",
         "SCAN 0 UVSHIFT INTERVAL (NS):2000000000",
         "SCAN 0 AC AVG INTERVAL (NS):2000000",
-        "SCAN 0 NUM PHS CTRS: {}".format(len(source_names)),
+        "SCAN 0 NUM PHS CTRS: {}".format(len(source_coords)),
         "SCAN 0 POINTING SRC:0",
     ]
-    for si in range(len(source_names)):
+    for si in range(len(source_coords)):
         newlines.extend([
             "SCAN 0 PHS CTR {}:   {}".format(si, si),
         ])

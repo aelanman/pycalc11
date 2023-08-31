@@ -59,15 +59,12 @@ instance, and duration as a float representing the length of the scan in minutes
     site_names = ['GBT-VLBA', 'VLA_E9', 'ALMA', 'MWA', 'CHIME']
 
     n_srcs = 500    # Arbitrarily many. Previously limited to 300.
-    srcs = ac.SkyCoord(
+    source_coords = ac.SkyCoord(
         ra=np.random.uniform(0, 360, n_srcs),
         dec=np.random.uniform(-90,90, n_srcs),
         unit='deg',
         frame='icrs',
     )
-
-    source_coords = [s for s in srcs]
-    source_names = [f"src{si}" for si in range(n_srcs)]
 
     # ------------
     # Initialize the Calc object.
@@ -76,7 +73,6 @@ instance, and duration as a float representing the length of the scan in minutes
     ci = Calc(
         station_names=site_names,
         station_coords=site_locs,
-        source_names=source_names,
         source_coords=source_coords,
         time=time,
         duration_min=duration_min,

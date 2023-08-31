@@ -32,11 +32,9 @@ class Calc:
         Names of VLBI stations.
     station_coords: array_like of astropy.coordinates.EarthLocation
         Positions of VLBI stations
-    source_names: array_like of str
-        Names of sources.
     source_coords: array_like of astropy.coordinates.SkyCoord
         Positions of sources in ICRS
-    time: astropy.time.Time
+    start_time: astropy.time.Time
         Start time of scan.
     duration_min: float
         Duration of scan in minutes
@@ -67,9 +65,6 @@ class Calc:
 
     _rerun = True       # Rerun driver before accessing results
 
-    src_names = []      # Once the f2py bug (numpy issue 10027) with character arrays is
-                        # fixed, this will be a property pointing to calc.calc_input.sites.
-
     _delay = None
     _delay_rate = None
     _partials = None
@@ -84,14 +79,13 @@ class Calc:
         require_rerun.__doc__ = func.__doc__
         return require_rerun
 
-    def __init__(self, station_names=None, station_coords=None,
-            source_names=None, source_coords=None,
-            time=None, duration_min=None,
+    def __init__(self, station_names=None, station_coords=None, source_coords=None,
+            start_time=None, duration_min=None,
             base_mode='geocenter', uvw_mode='exact', dry_atm=True, wet_atm=True,
             calc_file=None,
         ):
         # Setting defaults
-        self.reset()
+        self._reset()        # Clear if there's another instance.
         calc.mode.c_mode = 'difx  '
         calc.contrl.near_far = 'Far-field '
         calc.contrl.l_time = 'dont-solve'   # Optionally solve for LTT if using near-field
@@ -109,9 +103,8 @@ class Calc:
 
         # Check for required parameters
         kwargs = {
-                "station_names" : station_names, "station_coords" : station_coords,
-                "source_names": source_names, "source_coords": source_coords,
-                "time" : time, "duration_min" : duration_min, "base_mode" : base_mode,
+                "station_names" : station_names, "station_coords" : station_coords, "source_coords": source_coords,
+                "start_time" : start_time, "duration_min" : duration_min, "base_mode" : base_mode,
         }
 
         # Behavior:
@@ -119,11 +112,6 @@ class Calc:
         #   - If other parameters are provided, they override calc_file settings.
         if calc_file is not None:
             self.calc_file = calc_file
-            nsrcs, nstat = self.parse_calcfile(calc_file)
-            calc.alloc_source_arrays(nsrcs)
-            calc.dget_input(1)
-            calc.sitcm.numsit += 1      # Numsit in calc must include the geocenter.
-            calc.dscan(1,1)
         elif not all(v is not None for k,v in kwargs.items()):
             raise ValueError(
                 "If calc_file is not set, then all of the following must be set:"
@@ -134,22 +122,18 @@ class Calc:
             del self.calc_file
 
         # Initialize stations, sources, scan, and eops
-        if station_names is not None and station_coords is not None:
-            self.set_stations(station_names, station_coords)
-        if source_names is not None and source_coords is not None:
-            self.set_sources(source_names, source_coords)
-        if time is not None:
-            self.set_eops(time)
-            if duration_min is not None:
-                self.set_scan(time, duration_min)
+        self.station_names = station_names
+        self.station_coords = station_coords
+        self.source_coords = source_coords
+        self._start_time = start_time
+        self._duration_min = duration_min
+
+        if start_time is not None:
+            self.set_eops(start_time)
+            self.set_scan(start_time, duration_min)
 
         # Add geocenter station
         self._add_geocenter()
-
-        self.alloc_out_arrays()
-
-        # Check ocean loading params are available
-        OceanFiles.check_sites(self.stat_names)
 
         calc.dinitl(1)
 
@@ -174,6 +158,9 @@ class Calc:
 
     def run_driver(self):
         """Run adrivr to get results."""
+        calc.dsiti(1)      # In case stations changed, need to reload ocean loading etc.
+        calc.dwobi()       # Recalc wobble coefs in case EOPs changed.
+        self.alloc_out_arrays()
         e2m = calc.contrl.epoch2m - 1
         for ii in range(calc.calc_input.intrvls2min):
             calc.adrivr(1,ii+1)
@@ -190,27 +177,28 @@ class Calc:
 
         self._rerun = False
 
-    def interpolate_delays(self, t_0): 
-        """ Evaluates the delays at an absolute time t_0 by calculating an akima spline and interpolating delays along the time axis. 
+    def interpolate_delays(self, t_0):
+        """ Evaluates the delays at an absolute time t_0 by calculating an akima spline and interpolating delays along the time axis.
         The inputs to the akima spline is the time in seconds between self.times[0] and the time the delays should be evaluated.
+
         Parameters
         -----------------
         t_0 : astropy.time.Time
             Absolute time at which delays are to be evaluated
+
         Returns
         -----------
-        the delays in seconds evaluated at t_0
+        np.ndarray
+            The delays in seconds evaluated at t_0
         """
-        x=(t_0-self.times[0]).sec 
+        x=(t_0-self.times[0]).sec
         return self.delays_dt(x)
-
-
 
     @property
     def delays_dt(self):
         return Akima1DInterpolator((self.times - self.times[0]).sec, self.delay.to_value('s'), axis=0)
 
-    def reset(self):
+    def _reset(self):
         """Reset all common block items that were not initialized at startup."""
         self._delay = None
         self._delay_rate = None
@@ -241,70 +229,6 @@ class Calc:
         calc.sitcm.sitaxo[0] = 0.0    # Axis offset
         calc.sitcm.sitxyz[:, 0] = [0, 0, 0]
 
-    def set_stations(self, station_names, station_coords):
-        """
-        Set VLBI stations.
-
-        Parameters
-        ----------
-        station_names: list of str
-            Names of stations as strings
-            Should match names in the ocean loading / ocean pole tide loading files
-            if those coefficients are to be included.
-        station_coords: list of astropy.coordinates.EarthLocation
-            Station positions.
-        """
-        calc.sitcm.numsit = len(station_names) + 1
-
-        tnames = [s.upper() for s in station_names]
-        tpos = station_coords
-        for ti in range(self.nants):
-            # Offset of 1 to account for zeroth site being the geocenter
-            calc.calc_input.sites[ti+1] = np.bytes_(tnames[ti].ljust(10))
-            calc.calc_input.axis[ti+1] = "AZEL"
-            calc.sitcm.sitaxo[ti+1] = 0.0    # Axis offset
-            calc.sitcm.sitxyz[0, ti+1] = tpos[ti].x.to_value('m')
-            calc.sitcm.sitxyz[1, ti+1] = tpos[ti].y.to_value('m')
-            calc.sitcm.sitxyz[2, ti+1] = tpos[ti].z.to_value('m')
-        self._rerun = True
-
-    def set_sources(self, source_names, source_coords):
-        """
-        Set sources.
-
-        Parameters
-        ----------
-        source_names: list of str
-            Unique source names
-        source_coords: list of astropy.coordinates.SkyCoord
-            Celestial coordinates (ICRS, GCRS, etc.) of sources.
-        """
-        calc.calc_input.numphcntr = len(source_names)
-        self.src_names = np.asarray(source_names)
-        calc.alloc_source_arrays(self.nsrcs)
-        calc.srcmod.numstr = len(source_names)
-        for si, (coord, name) in enumerate(zip(source_coords, source_names)):
-            calc.srcmod.radec[:, si] = np.round([coord.ra.rad, coord.dec.rad], decimals=10)
-            # calc stores the source names as both a character array and an integer array, using an
-            # EQUIVALENCE to map the memory spaces together (the same bytes are interpreted as integers
-            # in LNSTAR). The following stores the source names correctly in the LNSTAR integer array.
-            calc.srcmod.lnstar[:, si] = np.frombuffer(bytes(name.ljust(20), encoding='utf-8'), dtype=np.int16)
-
-        Nsrc = len(source_names)
-        calc.srcmod.phcntr[:Nsrc] = range(1, Nsrc+1)
-        calc.srcmod.phcntr[Nsrc:] = -1
-
-        # The function call below causes a variety of different errors on shutdown:
-        #   > corrupted_size vs. prev_size
-        #   > segmentation fault
-        #   > double free or corruption (out)
-        #   > (partway through source list) realloc(): invalid old size
-        # calc doesn't actually use source names in difx mode, except in dscan
-        # when handling spacecraft, so this can be set off for now.
-        # Fixing this is a TODO for the future.
-        #calc.set_srcname(Nsrc)
-        self._rerun = True
-
     def set_scan(self, time, duration_min):
         """
         Set start time and duration of scan.
@@ -320,6 +244,7 @@ class Calc:
         """
         jstart = time
         jstop = time + TimeDelta(duration_min * 60, format='sec')
+        calc.con.kctic = 1      # Ensures CT = AT. Shouldn't make a difference, since CT isn't used.
         calc.ut1cm.xintv[0] = jstart.jd
         calc.ut1cm.xintv[1] = jstop.jd
         calc.ut1cm.intrvl[:, 0] = list(jstart.ymdhms)[:5]    # intrvl[:, 1] unused
@@ -331,7 +256,6 @@ class Calc:
         # As defined in dscan.f
         calc.calc_input.intrvls2min = np.ceil(duration_min / 2 + 0.001) + 1     # Number of 2 min intervals
         self._rerun = True
-
 
     def set_eops(self, time):
         """Set Earth orientation parameters.
@@ -438,8 +362,13 @@ class Calc:
         return calc.contrl.calc_file_name[()]
 
     @calc_file.setter
-    def calc_file(self, value):
-        calc.contrl.calc_file_name[()] = value.ljust(128)[:128]
+    def calc_file(self, fname):
+        calc.contrl.calc_file_name[()] = fname.ljust(128)[:128]
+        nsrcs, nstat = self.parse_calcfile(fname)
+        calc.alloc_source_arrays(nsrcs)
+        calc.dget_input(1)
+        calc.sitcm.numsit += 1      # Numsit in calc must include the geocenter.
+        calc.dscan(1,1)
         self._rerun = True
 
     @calc_file.deleter
@@ -457,10 +386,139 @@ class Calc:
         return calc.sitcm.numsit -  1  # Drop geocenter
 
     @property
+    def start_time(self):
+        return self._start_time
+
+    @start_time.setter
+    def start_time(self, time):
+        if time is None:
+            return
+        self._start_time = time
+        self.set_eops(time)
+        self.set_scan(time, self.duration_min)
+        self._rerun = True
+
+    @property
+    def duration_min(self):
+        return self._duration_min
+
+    @duration_min.setter
+    def duration_min(self, dur):
+        if dur is None:
+            return
+        self._duration_min = dur
+        self.set_scan(self._start_time, dur)
+
+    @property
+    def ant1_ind(self):
+        """Index in stations array corresponding with ant1 axis of output arrays."""
+        if self.base_mode == 'geocenter':
+            return 0
+        else:
+            return list(range(self.nants - 1))
+
+    @property
+    def ant2_ind(self):
+        """Index in stations array corresponding with ant2 axis of output arrays."""
+        return list(range(self.nants))
+
+    @property
+    def station_names(self):
+        """Station names."""
+        return calc.calc_input.sites[1:self.nants+1].astype("U8")
+
+    @station_names.setter
+    def station_names(self, station_names):
+        if station_names is None:
+            return
+        calc.sitcm.numsit = len(station_names) + 1
+        tnames = [s.upper() for s in station_names]
+        for ti in range(self.nants):
+            # Offset of 1 to account for zeroth site being the geocenter
+            calc.calc_input.sites[ti+1] = np.bytes_(tnames[ti].ljust(10))
+
+        # Check ocean loading params are available
+        OceanFiles.check_sites(self.station_names)
+        self._rerun = True
+
+    @property
+    def station_coords(self):
+        """Station coordinates in ITRF."""
+        return Quantity(
+            calc.sitcm.sitxyz[:, 1:self.nants+1],
+            unit='m',
+            copy=False,
+        )
+
+    @station_coords.setter
+    def station_coords(self, tpos):
+        if tpos is None:
+            return
+        calc.sitcm.numsit = len(tpos) + 1
+        for ti in range(self.nants):
+            # Offset of 1 to account for zeroth site being the geocenter
+            calc.calc_input.axis[ti+1] = "AZEL"
+            calc.sitcm.sitaxo[ti+1] = 0.0    # Axis offset
+            calc.sitcm.sitxyz[0, ti+1] = tpos[ti].x.to_value('m')
+            calc.sitcm.sitxyz[1, ti+1] = tpos[ti].y.to_value('m')
+            calc.sitcm.sitxyz[2, ti+1] = tpos[ti].z.to_value('m')
+        self._rerun = True
+
+    @property
+    def source_coords(self):
+        """Source coordinates in ICRS ra/dec"""
+        return ac.SkyCoord(
+            ra=calc.srcmod.radec[0],
+            dec=calc.srcmod.radec[1],
+            unit='rad',
+            frame='icrs',
+            copy=False,     # This might not be respected...
+        )
+
+    @source_coords.setter
+    def source_coords(self, src_coords):
+        """Set source positions."""
+#        Nsrc = 0 if not hasattr(src_coords, "__len__") else len(src_coords)
+        if src_coords is None:
+            return
+        Nsrc = len(src_coords)
+        calc.calc_input.numphcntr = Nsrc
+        calc.alloc_source_arrays(self.nsrcs)
+        calc.srcmod.numstr = Nsrc
+        calc.srcmod.radec[0, :] = np.round(src_coords.ra.rad, decimals=10)
+        calc.srcmod.radec[1, :] = np.round(src_coords.dec.rad, decimals=10)
+
+        calc.srcmod.phcntr[:Nsrc] = range(1, Nsrc+1)
+        calc.srcmod.phcntr[Nsrc:] = -1
+        self._rerun = True
+
+    @property
+    def src_ra(self):
+        """Source right ascension in ICRS"""
+        return ac.Longitude(
+            calc.srcmod.radec[0],
+            unit='rad',
+            copy=False,
+        )
+
+    @property
+    def src_dec(self):
+        """Source declination in ICRS"""
+        return ac.Latitude(
+            calc.srcmod.radec[1],
+            unit='rad',
+            copy=False,
+        )
+
+    # ---------------
+    # Results of running the driver
+    # ---------------
+
+    @property
     @_state_dep
     def times(self):
         """List of times for time axis of delay/delay_rate/partials arrays."""
-        return Time(self._times, format='datetime64', scale='utc')
+        return Time(self._times, format='datetime64', scale='utc', copy=False)
 
     @property
     @_state_dep
@@ -510,60 +568,6 @@ class Calc:
         return Quantity(
             vals,
             unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"),
-            copy=False,
-        )
-
-    @property
-    def ant1_ind(self):
-        """Index in stations array corresponding with ant1 axis of output arrays."""
-        if self.base_mode == 'geocenter':
-            return 0
-        else:
-            return list(range(self.nants - 1))
-
-    @property
-    def ant2_ind(self):
-        """Index in stations array corresponding with ant2 axis of output arrays."""
-        return list(range(self.nants))
-
-    @property
-    def stat_names(self):
-        """Station names."""
-        return calc.calc_input.sites[1:self.nants+1].astype("U8")
-
-    @property
-    def stat_coords(self):
-        """Station coordinates in ITRF."""
-        return Quantity(
-            calc.sitcm.sitxyz[:, 1:self.nants+1],
-            unit='m',
-            copy=False,
-        )
-
-    @property
-    def src_coords(self):
-        """Source coordinates in ICRS ra/dec"""
-        return ac.Angle(
-            calc.srcmod.radec,
-            unit='rad',
-            copy=False,
-        )
-
-    @property
-    def src_ra(self):
-        """Source right ascension in ICRS"""
-        return ac.Longitude(
-            calc.srcmod.radec[0],
-            unit='rad',
-            copy=False,
-        )
-
-    @property
-    def src_dec(self):
-        """Source declination in ICRS"""
-        return ac.Latitude(
-            calc.srcmod.radec[1],
-            unit='rad',
             copy=False,
         )
 
@@ -722,7 +726,7 @@ class OceanFiles:
                   + "\n".join(sndists)
                 )
 
-# Init
+# Init an OceanFiles
 OceanFiles()
 
 

@@ -405,7 +405,6 @@
         Sou26 = Buf1((IX+5):(IX+30)) 
         Sou26 = ADJUSTL(Sou26)
         SrcName(SrcNum+1) = Sou26(1:20)
-!        write(6,*) "TESTING: ", SrcNum
         ! Encode source names in LNSTAR without EQUIVALENCE
         do j=1, 10
            LNSTAR(j,SrcNum+1) = TRANSFER(Sou26((j-1)*2+1:(j-1)*2+2),    &
