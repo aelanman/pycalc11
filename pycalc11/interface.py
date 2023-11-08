@@ -98,7 +98,7 @@ class Calc:
         self.uvw_mode = uvw_mode            # Options are exact [include partials], uncorr, approx, noatmo [exact with no atmo]
 
         # Steps within 2 min chunks
-        calc.contrl.d_interval = 24.        # Step size in 2 min epoch
+        calc.contrl.d_interval = 1.        # Step size in 2 min epoch
         calc.contrl.epoch2m = (120.0001/calc.contrl.d_interval) + 1 # Number of steps in 2 min epoch
 
         # Check for required parameters
