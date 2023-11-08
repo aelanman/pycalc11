@@ -82,7 +82,7 @@ class Calc:
     def __init__(self, station_names=None, station_coords=None, source_coords=None,
             start_time=None, duration_min=None,
             base_mode='geocenter', uvw_mode='exact', dry_atm=True, wet_atm=True,
-            calc_file=None,d_interval=1,
+            calc_file=None, d_interval=24,
         ):
         # Setting defaults
         self._reset()        # Clear if there's another instance.
