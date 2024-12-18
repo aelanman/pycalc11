@@ -1,16 +1,28 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.15)
 
-project(calc11
+project(${SKBUILD_PROJECT_NAME}
   VERSION 1.0
   DESCRIPTION "CALC11 module"
   LANGUAGES C Fortran
   )
 
 
-find_package(Python 3.8 REQUIRED)
-find_package(PythonExtensions REQUIRED)
-find_package(NumPy)
-find_package(F2PY REQUIRED)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+
+
+#find_package(Python 3.8 REQUIRED)
+#find_package(PythonExtensions REQUIRED)
+#find_package(NumPy)
+#find_package(F2PY REQUIRED)
+
+execute_process(
+  COMMAND "${PYTHON_EXECUTABLE}" -c
+          "import numpy.f2py; print(numpy.f2py.get_include())"
+  OUTPUT_VARIABLE F2PY_INCLUDE_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 
 # Generate param11.in file in cmake build directory
 file(READ ${CMAKE_SOURCE_DIR}/calc11/src/param11.i.in CONTENTS)
@@ -30,14 +42,19 @@ add_custom_target(${f2py_module_name} ALL
   DEPENDS ${includes}
   )
 
+add_library(fortranobject OBJECT "${F2PY_INCLUDE_DIR}/fortranobject.c")
+target_link_libraries(fortranobject PUBLIC Python::NumPy)
+target_include_directories(fortranobject PUBLIC "${F2PY_INCLUDE_DIR}")
+
 add_custom_command(
   OUTPUT ${generated_module_file}
-  COMMAND ${F2PY_EXECUTABLE}
+  COMMAND "${Python_EXECUTABLE}" -m numpy.f2py
     -m ${f2py_module_name}
     -c
     ${fortran_src_file}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
+python_add_library(pycalc11 MODULE WITH_SOABI ${generated_module_file})
 
-install(FILES ${generated_module_file} DESTINATION pycalc11)
+  #install(FILES ${generated_module_file} DESTINATION pycalc11)
