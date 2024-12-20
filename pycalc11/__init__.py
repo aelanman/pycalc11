@@ -4,6 +4,7 @@ from astropy.utils.data import download_file
 
 from .data import DATA_PATH
 from . import calc11
+from . import runner
 
 
 # Get JPL ephemeris data
