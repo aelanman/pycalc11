@@ -478,10 +478,9 @@ class Calc:
     @source_coords.setter
     def source_coords(self, src_coords):
         """Set source positions."""
-#        Nsrc = 0 if not hasattr(src_coords, "__len__") else len(src_coords)
         if src_coords is None:
             return
-        Nsrc = len(src_coords)
+        Nsrc = 0 if src_coords.isscalar else len(src_coords)
         calc.calc_input.numphcntr = Nsrc
         calc.alloc_source_arrays(self.nsrcs)
         calc.srcmod.numstr = Nsrc
