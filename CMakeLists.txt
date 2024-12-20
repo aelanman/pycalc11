@@ -6,6 +6,8 @@ find_package(
   COMPONENTS Interpreter Development.Embed Development.Module NumPy
   REQUIRED)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 # F2PY headers
 execute_process(
   COMMAND "${PYTHON_EXECUTABLE}" -c
@@ -47,7 +49,13 @@ python_add_library(
        WITH_SOABI)
 target_link_libraries(calc11 PRIVATE fortranobject)
 
+if ("${SKBUILD_STATE}" STREQUAL "editable")
+        set(build_dest "${CMAKE_SOURCE_DIR}/pycalc11")
+else()
+        set(build_dest ${SKBUILD_PROJECT_NAME})
+endif()
+
 install(
     TARGETS calc11
-    DESTINATION ${SKBUILD_PROJECT_NAME}
+    DESTINATION ${build_dest}
 )
