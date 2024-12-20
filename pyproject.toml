@@ -4,7 +4,6 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pycalc11"
-#version = "0.1"
 dynamic = ["version"]
 authors = [
     {name = "Marten H. van Kerkwijk", email = "mhvk@astro.utoronto.ca"},
@@ -15,29 +14,19 @@ license = {text = "MIT"}
 description = "Python wrappers for CALC11"
 urls = {Homepage = "https://github.com/aelanman/pycalc11"}
 requires-python = ">=3.8"
-dependencies = ["numpy>=1.21,<1.24", "astropy>=3.2"]
+dependencies = ["numpy>=1.21", "astropy>=3.2"]
 
 [tool.setuptools_scm]
-
 
 [project.readme]
 file = "README.rst"
 content-type = "text/x-rst"
-
-## [tool.setuptools]
-## zip-safe = false
-## include-package-data = true
-## license-files = ["LICENSE"]
-## 
-## [tool.setuptools.packages]
-## find = {namespaces = false, where = ["."]}
 
 [tool.scikit-build]
 ninja.version = ">=1.10"
 cmake.version = ">=3.17.2"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 sdist.include = ["pycalc11/_version.py"]
-build-dir = "build/{wheel_tag}"
 
 
 [tool.pytest.ini_options]
