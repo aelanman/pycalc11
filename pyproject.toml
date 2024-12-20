@@ -16,6 +16,9 @@ urls = {Homepage = "https://github.com/aelanman/pycalc11"}
 requires-python = ">=3.8"
 dependencies = ["numpy>=1.21", "astropy>=3.2", "scipy"]
 
+[project.optional-dependencies]
+dev = ["pytest", "flake8", "pycodestyle"]
+
 [tool.setuptools_scm]
 
 [project.readme]
@@ -27,7 +30,6 @@ ninja.version = ">=1.10"
 cmake.version = ">=3.17.2"
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 sdist.include = ["pycalc11/_version.py"]
-
 
 [tool.pytest.ini_options]
 testpaths = ['"pycalc11/tests"']
