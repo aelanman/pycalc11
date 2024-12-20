@@ -17,7 +17,7 @@ requires-python = ">=3.8"
 dependencies = ["numpy>=1.21", "astropy>=3.2", "scipy"]
 
 [project.optional-dependencies]
-dev = ["pytest", "flake8", "pycodestyle"]
+dev = ["pytest", "flake8", "pycodestyle", "jplephem"]
 
 [tool.setuptools_scm]
 
