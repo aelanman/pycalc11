@@ -22,6 +22,8 @@ References
 Installation
 ------------
 
+You will need cmake and a fortran compiler (e.g., gfortran) to build pycalc11.
+
 Install directly from the repository with pip::
 
     pip install git+https://github.com/aelanman/pycalc11.git
@@ -34,6 +36,8 @@ Note that, due to recent changes in setuptools, the above might not work directl
 
 The source code for CALC is in the repository and will be built and added as an
 extension to the pycalc11 module.
+
+On a first run, `pycalc11` will download and cache the JPL DE421 ephemeris file from ATNF. This can take around 30s.
 
 Quick Start
 -----------
