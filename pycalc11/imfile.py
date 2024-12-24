@@ -34,8 +34,11 @@ class TimeRange:
             Time to check.
         """
         return (
-            (other.mjd > self.start.mjd or np.isclose(other.mjd, self.start.mjd, atol=1e-6, rtol=0.0)) and
-            (other.mjd <= self.end.mjd or np.isclose(other.mjd, self.end.mjd, atol=1e-6, rtol=0.0))
+            other.mjd > self.start.mjd
+            or np.isclose(other.mjd, self.start.mjd, atol=1e-6, rtol=0.0)
+        ) and (
+            other.mjd <= self.end.mjd
+            or np.isclose(other.mjd, self.end.mjd, atol=1e-6, rtol=0.0)
         )
 
     def __repr__(self):
@@ -65,7 +68,6 @@ class CalcReader:
         if filename is not None:
             self.read_im(filename)
 
-
     def read_im(self, filename):
         """
         Read in .im file.
@@ -76,7 +78,7 @@ class CalcReader:
             Path to file to load. Optional.
         """
         self.filename = filename
-        lines = open(filename, 'r').readlines()
+        lines = open(filename, "r").readlines()
 
         # Form a dictionary of data in the file.
         # This needs to be done line by line, because some line prefixes are the same,
@@ -87,9 +89,9 @@ class CalcReader:
         cur_poly = -1
         for line in lines:
 
-            pref, dat = line.split(':')
+            pref, dat = line.split(":")
             dat = dat.rstrip()
-            pref = pref.replace(' ', '_')
+            pref = pref.replace(" ", "_")
 
             try:
                 dat = int(dat)
@@ -101,11 +103,11 @@ class CalcReader:
                     pass
 
             if pref.startswith("SCAN"):
-                spl = pref.split('_')
+                spl = pref.split("_")
                 cur_scan = int(spl[1])
-                cur_poly = -1   # reset
+                cur_poly = -1  # reset
 
-                if spl[2] == 'POLY':
+                if spl[2] == "POLY":
                     cur_poly = int(spl[3])
 
             if cur_poly > -1 and not pref.startswith("SCAN"):
@@ -116,7 +118,16 @@ class CalcReader:
 
             if any(
                 key in pref
-                for key in ['DELAY', 'DRY', 'WET', 'AZ', 'EL_GEOM', 'U_(m)', 'V_(m)', 'W_(m)']
+                for key in [
+                    "DELAY",
+                    "DRY",
+                    "WET",
+                    "AZ",
+                    "EL_GEOM",
+                    "U_(m)",
+                    "V_(m)",
+                    "W_(m)",
+                ]
             ):
                 lst = np.array(dat.split()).astype(float)
                 dat = np.poly1d(lst[::-1])
@@ -127,31 +138,32 @@ class CalcReader:
 
         # Create a dictionary identifying valid time ranges for each set of polynomials.
         self.poly_ranges = {}
-        for scan_i in range(self.params['NUM_SCANS']):
+        for scan_i in range(self.params["NUM_SCANS"]):
             npoly = self.params[f"SCAN_{scan_i}_NUM_POLY"]
             for pol_i in range(npoly):
                 key = (scan_i, pol_i)
                 ti = Time(
-                        self.params[f"SCAN_{scan_i}_POLY_{pol_i}_MJD"]
-                        + self.params[f"SCAN_{scan_i}_POLY_{pol_i}_SEC"] / (24 * 3600),
-                format='mjd')
-                tf = ti + TimeDelta(self.params['INTERVAL_(SECS)'], format='sec')
+                    self.params[f"SCAN_{scan_i}_POLY_{pol_i}_MJD"]
+                    + self.params[f"SCAN_{scan_i}_POLY_{pol_i}_SEC"] / (24 * 3600),
+                    format="mjd",
+                )
+                tf = ti + TimeDelta(self.params["INTERVAL_(SECS)"], format="sec")
 
                 self.poly_ranges[key] = TimeRange(ti, tf)
 
         # Collect the start time from other keywords.
         start_date = datetime(
-            self.params['START_YEAR'],
-            self.params['START_MONTH'],
-            self.params['START_DAY'],
-            self.params['START_HOUR'],
-            self.params['START_MINUTE'],
-            self.params['START_SECOND'],
+            self.params["START_YEAR"],
+            self.params["START_MONTH"],
+            self.params["START_DAY"],
+            self.params["START_HOUR"],
+            self.params["START_MINUTE"],
+            self.params["START_SECOND"],
         )
-        self.start_date = Time(start_date, format='datetime')
+        self.start_date = Time(start_date, format="datetime")
 
         # Get the telescope names and numbers:
-        n_ants = self.params['NUM_TELESCOPES']
+        n_ants = self.params["NUM_TELESCOPES"]
         self.antnames = [None] * n_ants
         self.antnums = list(range(n_ants))
         for ai in range(n_ants):
@@ -165,7 +177,9 @@ class CalcReader:
                 polyind = pi
                 break
         if polyind is None:
-            raise ValueError(f"Time {time} is not covered by current polynomials for scan {scan}.")
+            raise ValueError(
+                f"Time {time} is not covered by current polynomials for scan {scan}."
+            )
 
         pscan, pnum = polyind
         key = f"SCAN_{pscan}_POLY_{pnum}_SRC_{src_num}_ANT_{ant_num}"
@@ -228,7 +242,6 @@ class CalcReader:
         float
             Delay in microseconds.
         """
-        return (
-            self.delay(ant2, time, src_num, scan=scan)
-            - self.delay(ant1, time, src_num, scan=scan)
+        return self.delay(ant2, time, src_num, scan=scan) - self.delay(
+            ant1, time, src_num, scan=scan
         )

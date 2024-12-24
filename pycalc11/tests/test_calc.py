@@ -209,12 +209,8 @@ def test_calc_props(params_vlbi):
     assert_allclose(srcs.dec.rad, psrcs.dec.rad)
 
     # Station positions
-    stats = [
-        ac.EarthLocation.from_geocentric(*c, unit="m") for c in ci.station_coords.T
-    ]
-    assert all(
-        [stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"])]
-    )
+    stats = [ac.EarthLocation.from_geocentric(*c, unit="m") for c in ci.station_coords.T]
+    assert all([stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"])])
 
 
 @pytest.mark.filterwarnings("ignore:No ocean")
@@ -227,9 +223,7 @@ def test_kwd_override(params_all, tmpdir):
     stat_locs = params_all["station_coords"][:-1]
     stat_nmes = params_all["station_names"][:-1]
 
-    ci = Calc(
-        calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes
-    )
+    ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
     assert ci.station_coords.shape[1] == len(stat_locs) == 8
 
 
@@ -260,10 +254,12 @@ def test_ddr_vals(base_mode, params_vlbi):
                 ap_del = astropy_delay(srcs, tt, st_locs[si], gc)
                 ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc)
                 assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, atol=5 * un.us)
-                assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz)
+                assert_quantity_allclose(
+                    ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz
+                )
         if base_mode == "baseline":
             for s1i in range(nstat):
-                for s2i in range(s1i+1, nstat):
+                for s2i in range(s1i + 1, nstat):
                     ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i])
                     ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i])
                     assert_quantity_allclose(
@@ -365,9 +361,7 @@ def test_partials_calc(params_vlbi):
     # dtau_dra and dtau_ddec axes = (time, ant1, ant2) where ant1 is just geocenter
     atol = 1e-6 * un.s / un.rad
     assert_quantity_allclose(dtau_dra[:, 0, :], partials["dD_dRA"][:, 0, :], atol=atol)
-    assert_quantity_allclose(
-        dtau_ddec[:, 0, :], partials["dD_dDEC"][:, 0, :], atol=atol
-    )
+    assert_quantity_allclose(dtau_ddec[:, 0, :], partials["dD_dDEC"][:, 0, :], atol=atol)
 
 
 def test_errors(params_all):
@@ -420,7 +414,7 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
+        warnings.simplefilter("ignore")
         ci = Calc(**params_vlbi)
 
     nants = len(params_vlbi["station_coords"])
@@ -434,9 +428,7 @@ def test_coef_vals(params_vlbi):
                 calc.sitcm.sitoam[..., 1 : nants + 1],  # Vertical amplitude [m]
                 calc.sitcm.sithoa[:, 0, 1 : nants + 1],  # horizontal amplitudes [m]
                 calc.sitcm.sithoa[:, 1, 1 : nants + 1],
-                np.degrees(
-                    calc.sitcm.sitoph[..., 1 : nants + 1]
-                ),  # Vertical phase [deg]
+                np.degrees(calc.sitcm.sitoph[..., 1 : nants + 1]),  # Vertical phase [deg]
                 np.degrees(
                     calc.sitcm.sithop[:, 0, 1 : nants + 1]
                 ),  # horizontal phases [deg]
@@ -469,9 +461,7 @@ def test_change_quantities(params_vlbi, kv):
     setattr(ci, key, val)
     assert ci._rerun
 
-    with pytest.raises(
-        ValueError, match="Need to rerun adrivr before accessing data. "
-    ):
+    with pytest.raises(ValueError, match="Need to rerun adrivr before accessing data. "):
         print(ci.delay)
 
     if key == "source_coords":
@@ -479,13 +469,14 @@ def test_change_quantities(params_vlbi, kv):
         assert ci.nsrcs == 30
         assert ci.delay.shape[-1] == 30
 
+
 def test_epochs():
     # Check that scan covers requested time
     pars = make_params(nsrcs=10, duration_min=60)
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
+        warnings.simplefilter("ignore")
         ci = Calc(**pars)
     ci.run_driver()
     t0 = pars["start_time"]
-    t1 = t0 + TimeDelta(3600, format='sec')
+    t1 = t0 + TimeDelta(3600, format="sec")
     assert ci.times.min() <= t0 and t1 <= ci.times.max()

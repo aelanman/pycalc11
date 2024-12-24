@@ -38,7 +38,7 @@ add_custom_command(
           "${fortran_src_file}" -m calc11 --lower
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
- 
+
 python_add_library(
        calc11
        MODULE

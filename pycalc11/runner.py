@@ -6,6 +6,7 @@ from subprocess import check_output
 
 difxcalc = shutil.which("difxcalc")
 
+
 def run_difxcalc(
     calcfile,
     dry_tropo=False,

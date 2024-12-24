@@ -13,9 +13,15 @@ from .utils import get_leap_seconds, iers_tab
 # Up to date EOPs and leap second tables from the IERS
 
 
-def make_calc(station_coords, station_names, source_coords,
-              start_time, duration_min, ofile_name=None,
-              im_filename=None):
+def make_calc(
+    station_coords,
+    station_names,
+    source_coords,
+    start_time,
+    duration_min,
+    ofile_name=None,
+    im_filename=None,
+):
     """
     Make a .calc file as input to difxcalc.
 
@@ -40,13 +46,13 @@ def make_calc(station_coords, station_names, source_coords,
     """
     # Filename defaults
     if ofile_name is None:
-        ofile_name = 'new.calc'
+        ofile_name = "new.calc"
     if im_filename is None:
-        ls = ofile_name.split('.')
-        im_filename = ofile_name + '.im'
-        if ls[-1] == 'calc':
+        ls = ofile_name.split(".")
+        im_filename = ofile_name + ".im"
+        if ls[-1] == "calc":
             ls.pop()
-            im_filename = ".".join(ls) + '.im'
+            im_filename = ".".join(ls) + ".im"
 
     # ----------------------------
     # Start time and job params.
@@ -72,7 +78,6 @@ def make_calc(station_coords, station_names, source_coords,
         "START SECOND:       {:.0f}".format(start_time.datetime.second),
         "IM FILENAME:        dummy.im",
         "FLAG FILENAME:      dummy.flag",
-
     ]
     lines.extend(newlines)
 
@@ -83,14 +88,14 @@ def make_calc(station_coords, station_names, source_coords,
     ut1_utc = []
     mjd = []
     xy = []
-    times = start_time + TimeDelta(range(2), format='jd')
+    times = start_time + TimeDelta(range(2), format="jd")
     for tt in times:
         mjd.append(np.floor(tt.mjd))
         tai_utc.append(get_leap_seconds(tt))
         ut1_utc.append(tt.delta_ut1_utc.reshape(1)[0])
 
         # polar motion
-        xy.append([z.to_value('arcsec') for z in iers_tab.pm_xy(tt)])
+        xy.append([z.to_value("arcsec") for z in iers_tab.pm_xy(tt)])
 
     lines.append("NUM EOPS: {:d}".format(len(times)))
     for ti in range(len(times)):
@@ -113,8 +118,8 @@ def make_calc(station_coords, station_names, source_coords,
         name = f"src{si:d}"
         newlines = [
             "SOURCE {:d} NAME:      {}".format(si, name),
-            "SOURCE {:d} RA:        {:.10f}".format(si, coord.ra.rad),      # radians
-            "SOURCE {:d} DEC:       {:.10f}".format(si, coord.dec.rad),      # radians
+            "SOURCE {:d} RA:        {:.10f}".format(si, coord.ra.rad),  # radians
+            "SOURCE {:d} DEC:       {:.10f}".format(si, coord.dec.rad),  # radians
             "SOURCE {:d} CALCODE:   B".format(si),
             "SOURCE {:d} QUAL:      0".format(si),
         ]
@@ -127,18 +132,20 @@ def make_calc(station_coords, station_names, source_coords,
     # check for lowercase in telescope names
     for char in "".join(station_names):
         if char.islower():
-            warnings.warn("Station names should be all uppercase. "
-                          "Lowercase detected. Changing to uppercase.")
+            warnings.warn(
+                "Station names should be all uppercase. "
+                "Lowercase detected. Changing to uppercase."
+            )
             break
     lines.append("NUM TELESCOPES:     {}".format(n_ants))
     for ti in range(n_ants):
-        newlines=[
+        newlines = [
             "TELESCOPE {:d} NAME:   {}".format(ti, station_names[ti].upper()),
             "TELESCOPE {:d} MOUNT:  AZEL".format(ti),
             "TELESCOPE {:d} OFFSET (m): 0.0000".format(ti),
-            "TELESCOPE {:d} X (m): {:.8f}".format(ti, station_coords[ti].x.to_value('m')),
-            "TELESCOPE {:d} Y (m): {:.8f}".format(ti, station_coords[ti].y.to_value('m')),
-            "TELESCOPE {:d} Z (m): {:.8f}".format(ti, station_coords[ti].z.to_value('m')),
+            "TELESCOPE {:d} X (m): {:.8f}".format(ti, station_coords[ti].x.to_value("m")),
+            "TELESCOPE {:d} Y (m): {:.8f}".format(ti, station_coords[ti].y.to_value("m")),
+            "TELESCOPE {:d} Z (m): {:.8f}".format(ti, station_coords[ti].z.to_value("m")),
             "TELESCOPE {:d} SHELF:  None".format(ti),
         ]
         lines.extend(newlines)
@@ -159,11 +166,12 @@ def make_calc(station_coords, station_names, source_coords,
         "SCAN 0 POINTING SRC:0",
     ]
     for si in range(len(source_coords)):
-        newlines.extend([
-            "SCAN 0 PHS CTR {}:   {}".format(si, si),
-        ])
+        newlines.extend(
+            [
+                "SCAN 0 PHS CTR {}:   {}".format(si, si),
+            ]
+        )
     lines.extend(newlines)
-
 
     # ----------------------------
     # Other necessary attributes.
@@ -172,10 +180,10 @@ def make_calc(station_coords, station_names, source_coords,
         "SPECTRAL AVG:       1",
         "TAPER FUNCTION:     UNIFORM",
         "IM FILENAME:        {}".format(im_filename),
-        "FLAG FILENAME:      {}".format(im_filename + '.flag'),
+        "FLAG FILENAME:      {}".format(im_filename + ".flag"),
     ]
     lines.extend(other)
 
-    lines = [l + '\n' for l in lines]
-    with open(ofile_name, 'w') as ofile:
+    lines = [l + "\n" for l in lines]
+    with open(ofile_name, "w") as ofile:
         ofile.writelines(lines)
