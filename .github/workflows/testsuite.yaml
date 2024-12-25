@@ -89,4 +89,4 @@ jobs:
           pip install .[dev]
       - name: Run Tests
         run: |
-          python -m pytest 
+          python -m pytest

@@ -1,3 +1,5 @@
+"""Utility functions for testing and line profiling."""
+
 import numpy as np
 from datetime import datetime
 import atexit
@@ -17,9 +19,9 @@ iers_tab = iers.earth_orientation_table.get()
 
 
 def get_leap_seconds(tobj):
-    # Find current TAI - UTC for a given time.
+    """Find current TAI - UTC for a given time."""
     lsec_table = iers.LeapSeconds.auto_open().as_array()
-    for ti, (yr, mo, tai_utc) in enumerate(lsec_table):
+    for ti, (yr, mo, _) in enumerate(lsec_table):
         dtobj = datetime(yr, mo, 1, 0, 0, 0)
         if dtobj > tobj.datetime:
             ti -= 1
@@ -34,7 +36,7 @@ def get_leap_seconds(tobj):
 
 def astropy_delay(src, time, ant0, ant1):
     """
-    Basic calculation of geometric delay using astropy in ITRS.
+    Calculate geometric delay using astropy in ITRS.
 
     Parameters
     ----------
@@ -69,7 +71,7 @@ def astropy_delay(src, time, ant0, ant1):
 
 def astropy_delay_rate(src, time, ant0, ant1):
     """
-    Basic calculation of geometric delay rate using astropy in ITRS.
+    Calculate geometric delay rate using astropy in ITRS.
 
     Parameters
     ----------
@@ -165,14 +167,12 @@ def do_profiling(func_list=None, time=True, memory=False):
 
     # Add module functions to profiler.
     for mod_it in _pycalc11.__dict__.values():
-        if isfunction(mod_it):
-            if mod_it.__name__ in func_list:
-                prof.add_function(mod_it)
+        if isfunction(mod_it) and mod_it.__name__ in func_list:
+            prof.add_function(mod_it)
         if isclass(mod_it):
             for item in mod_it.__dict__.values():
-                if isfunction(item):
-                    if item.__name__ in func_list:
-                        prof.add_function(item)
+                if isfunction(item) and item.__name__ in func_list:
+                    prof.add_function(item)
 
     # Write out profiling report to file.
     ofile = open(ofname, "w")

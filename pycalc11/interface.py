@@ -1,3 +1,5 @@
+"""Classes to interface with compiled Fortran code."""
+
 import numpy as np
 import warnings
 from astropy.time import Time, TimeDelta
@@ -70,7 +72,7 @@ class Calc:
     _partials = None
 
     def _state_dep(func):
-        """Decorator ensuring that state is consistent with products."""
+        """Ensure that the state is consistent with products."""
 
         def require_rerun(self):
             if self._rerun:
@@ -102,13 +104,16 @@ class Calc:
         calc.mode.c_mode = "difx  "
         calc.contrl.near_far = "Far-field "
         calc.contrl.l_time = "dont-solve"  # Optionally solve for LTT if using near-field
-        calc.nfo.spoffset = "NoOffset"  # Use near-field ephemeris epoch offset (set nfo.t_offset accordingly)
+        calc.nfo.spoffset = "NoOffset"  # Use near-field ephemeris epoch offset
+        #   (set nfo.t_offset accordingly)
         calc.contrl.verbose = 0  # Print out pointing source name
 
         self.base_mode = base_mode
         self.dry_atm = dry_atm
         self.wet_atm = wet_atm
-        self.uvw_mode = uvw_mode  # Options are exact [include partials], uncorr, approx, noatmo [exact with no atmo]
+        self.uvw_mode = uvw_mode
+        # uvw_mode options are:
+        #   exact (include partials), uncorr, approx, noatmo(exact with no atmo)
 
         # Steps within 2 min chunks
         calc.contrl.d_interval = d_interval  # Step size in s throughout 2 min epoch
@@ -199,16 +204,16 @@ class Calc:
         self._rerun = False
 
     def interpolate_delays(self, t_0):
-        """Evaluates the delays at an absolute time t_0 by calculating an akima spline and interpolating delays along the time axis.
-        The inputs to the akima spline is the time in seconds between self.times[0] and the time the delays should be evaluated.
+        """
+        Interpolate the delays along the time axis, using an Akima spline.
 
         Parameters
-        -----------------
+        ----------
         t_0 : astropy.time.Time
-            Absolute time at which delays are to be evaluated
+            Absolute time(s) at which delays are to be evaluated
 
         Returns
-        -----------
+        -------
         np.ndarray
             The delays in seconds evaluated at t_0
         """
@@ -217,6 +222,7 @@ class Calc:
 
     @property
     def delays_dt(self):
+        """Delay interpolator."""
         return Akima1DInterpolator(
             (self.times - self.times[0]).sec, self.delay.to_value("s"), axis=0
         )
@@ -387,7 +393,7 @@ class Calc:
     @uvw_mode.setter
     def uvw_mode(self, value):
         valid = ["exact", "uncorr", "approx", "noatmo"]
-        if not value.strip() in valid:
+        if value.strip() not in valid:
             raise ValueError("uvw_mode must be one of the following: " + ", ".join(valid))
         calc.contrl.uvw = value.ljust(6)
         self._rerun = True
@@ -423,6 +429,7 @@ class Calc:
 
     @property
     def start_time(self):
+        """Start time of scan."""
         return self._start_time
 
     @start_time.setter
@@ -436,6 +443,7 @@ class Calc:
 
     @property
     def duration_min(self):
+        """Total duration of scan in minutes."""
         return self._duration_min
 
     @duration_min.setter
@@ -480,11 +488,7 @@ class Calc:
     @property
     def station_coords(self):
         """Station coordinates in ITRF."""
-        return Quantity(
-            calc.sitcm.sitxyz[:, 1 : self.nants + 1],
-            unit="m",
-            copy=False,
-        )
+        return Quantity(calc.sitcm.sitxyz[:, 1 : self.nants + 1], unit="m", copy=False)
 
     @station_coords.setter
     def station_coords(self, tpos):
@@ -502,7 +506,7 @@ class Calc:
 
     @property
     def source_coords(self):
-        """Source coordinates in ICRS ra/dec"""
+        """Source coordinates in ICRS ra/dec."""
         return ac.SkyCoord(
             ra=calc.srcmod.radec[0],
             dec=calc.srcmod.radec[1],
@@ -529,21 +533,13 @@ class Calc:
 
     @property
     def src_ra(self):
-        """Source right ascension in ICRS"""
-        return ac.Longitude(
-            calc.srcmod.radec[0],
-            unit="rad",
-            copy=False,
-        )
+        """Source right ascension in ICRS."""
+        return ac.Longitude(calc.srcmod.radec[0], unit="rad", copy=False)
 
     @property
     def src_dec(self):
-        """Source declination in ICRS"""
-        return ac.Latitude(
-            calc.srcmod.radec[1],
-            unit="rad",
-            copy=False,
-        )
+        """Source declination in ICRS."""
+        return ac.Latitude(calc.srcmod.radec[1], unit="rad", copy=False)
 
     # ---------------
     # Results of running the driver
@@ -601,9 +597,7 @@ class Calc:
         else:
             vals = self._partials
         return Quantity(
-            vals,
-            unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"),
-            copy=False,
+            vals, unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"), copy=False
         )
 
 
@@ -620,6 +614,7 @@ class OceanFiles:
     stat_pos = None  # Lons/lats/heights of stations in degrees/meters, from file.
 
     def __new__(cls):
+        """Read in files while initializing new OceanFiles."""
         cls.read_optl()
         cls.read_oc()
 
@@ -631,7 +626,7 @@ class OceanFiles:
         with open(cls.OPTL_file, "r") as optl_file:
             lns = optl_file.readlines()[5:]
             dat = []
-            for li, ln in enumerate(lns):
+            for ln in lns:
                 name = ln[1:9]
                 code = ln[10:14]
                 vals = list(map(float, ln[15:].split()))
@@ -685,10 +680,12 @@ class OceanFiles:
 
     @classmethod
     def list_optl_sites(cls):
+        """List current sites in optl table."""
         return cls.optl_data["name"]
 
     @classmethod
     def list_oc_sites(cls):
+        """List current sites in oc table."""
         return cls.oc_data["name"]
 
     @classmethod
@@ -701,10 +698,12 @@ class OceanFiles:
 
     @classmethod
     def get_oc_ind(cls, name, code=None):
+        """Get index of site in oc table."""
         return cls._get_ind(cls.oc_data, name, code=code)
 
     @classmethod
     def get_optl_ind(cls, name, code=None):
+        """Get index of site in optl table."""
         return cls._get_ind(cls.optl_data, name, code=code)
 
     @classmethod
@@ -727,7 +726,7 @@ class OceanFiles:
             Optional. Default = 10 meters
         """
         names = [s.ljust(8) for s in site_names]
-        oc_names = [s for s in cls.oc_data["name"]]
+        oc_names = list(cls.oc_data["name"])
 
         oc_not_found = list(set(names) - set(cls.oc_data["name"]))
         optl_not_found = list(set(names) - set(cls.optl_data["name"]))
@@ -772,7 +771,7 @@ OceanFiles()
 
 
 def is_initialized(cb, item):
-    """True if the item from common block cb is initialized on start-up.
+    """Check if the item from common block cb is initialized on start-up.
 
     Also true if cb is module.
 

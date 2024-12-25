@@ -1,4 +1,3 @@
-#!/bin/env python
 """
 Functions to make a difxcalc input file (.calc) given telescope locations,
 times, sources, and other parameters in astropy classes.
@@ -60,8 +59,8 @@ def make_calc(
     lines = []
     newlines = [
         "JOB ID:             4",
-        "JOB START TIME:     {:.8f}".format(start_time.mjd),
-        "JOB STOP TIME:      {:.8f}".format(start_time.mjd + duration_min / (24 * 60)),
+        f"JOB START TIME:     {start_time.mjd:.8f}",
+        f"JOB STOP TIME:      {start_time.mjd + duration_min / (24 * 60):.8f}",
         "DUTY CYCLE:         1.000",
         "OBSCODE:            DUMMY",
         "DIFX VERSION:       DIFX-2.6.2",
@@ -69,13 +68,13 @@ def make_calc(
         "SUBJOB ID:          0",
         "SUBARRAY ID:        0",
         "VEX FILE:           dummy.vex.obs",
-        "START MJD:          {:.8f}".format(start_time.mjd),
-        "START YEAR:         {:.0f}".format(start_time.datetime.year),
-        "START MONTH:        {:.0f}".format(start_time.datetime.month),
-        "START DAY:          {:.0f}".format(start_time.datetime.day),
-        "START HOUR:         {:.0f}".format(start_time.datetime.hour),
-        "START MINUTE:       {:.0f}".format(start_time.datetime.minute),
-        "START SECOND:       {:.0f}".format(start_time.datetime.second),
+        f"START MJD:          {start_time.mjd:.8f}",
+        f"START YEAR:         {start_time.datetime.year:.0f}",
+        f"START MONTH:        {start_time.datetime.month:.0f}",
+        f"START DAY:          {start_time.datetime.day:.0f}",
+        f"START HOUR:         {start_time.datetime.hour:.0f}",
+        f"START MINUTE:       {start_time.datetime.minute:.0f}",
+        f"START SECOND:       {start_time.datetime.second:.0f}",
         "IM FILENAME:        dummy.im",
         "FLAG FILENAME:      dummy.flag",
     ]
@@ -97,31 +96,32 @@ def make_calc(
         # polar motion
         xy.append([z.to_value("arcsec") for z in iers_tab.pm_xy(tt)])
 
-    lines.append("NUM EOPS: {:d}".format(len(times)))
+    lines.append(f"NUM EOPS: {len(times):d}")
     for ti in range(len(times)):
         newlines = [
-            "EOP {:d} TIME (mjd):{:.0f}".format(ti, mjd[ti]),
-            "EOP {:d} TAI_UTC (sec):{:.0f}".format(ti, tai_utc[ti]),
-            "EOP {:d} UT1_UTC (sec):{:.8f}".format(ti, ut1_utc[ti]),
-            "EOP {:d} XPOLE (arcsec):{:.10f}".format(ti, xy[ti][0]),
-            "EOP {:d} YPOLE (arcsec):{:.10f}".format(ti, xy[ti][1]),
+            f"EOP {ti:d} TIME (mjd):{mjd[ti]:.0f}",
+            f"EOP {ti:d} TAI_UTC (sec):{tai_utc[ti]:.0f}",
+            f"EOP {ti:d} UT1_UTC (sec):{ut1_utc[ti]:.8f}",
+            f"EOP {ti:d} XPOLE (arcsec):{xy[ti][0]:.10f}",
+            f"EOP {ti:d} YPOLE (arcsec):{xy[ti][1]:.10f}",
         ]
         lines.extend(newlines)
 
     # ----------------------------
     # Sources
     # ----------------------------
-    # CALCODE = calibration code, typically A,B,C for calibrators, G for a gated pulsar, or blank for normal target
+    # CALCODE = calibration code, typically A,B,C for calibrators,
+    #           G for a gated pulsar, or blank for normal target
     # https://www.atnf.csiro.au/vlbi/dokuwiki/lib/exe/fetch.php/difx/difxuserguide.pdf
-    lines.append("NUM SOURCES: {:d}".format(len(source_coords)))
+    lines.append(f"NUM SOURCES: {len(source_coords):d}")
     for si, coord in enumerate(source_coords):
         name = f"src{si:d}"
         newlines = [
-            "SOURCE {:d} NAME:      {}".format(si, name),
-            "SOURCE {:d} RA:        {:.10f}".format(si, coord.ra.rad),  # radians
-            "SOURCE {:d} DEC:       {:.10f}".format(si, coord.dec.rad),  # radians
-            "SOURCE {:d} CALCODE:   B".format(si),
-            "SOURCE {:d} QUAL:      0".format(si),
+            f"SOURCE {si:d} NAME:      {name}",
+            f"SOURCE {si:d} RA:        {coord.ra.rad:.10f}",  # radians
+            f"SOURCE {si:d} DEC:       {coord.dec.rad:.10f}",  # radians
+            f"SOURCE {si:d} CALCODE:   B",
+            f"SOURCE {si:d} QUAL:      0",
         ]
         lines.extend(newlines)
 
@@ -137,16 +137,16 @@ def make_calc(
                 "Lowercase detected. Changing to uppercase."
             )
             break
-    lines.append("NUM TELESCOPES:     {}".format(n_ants))
+    lines.append(f"NUM TELESCOPES:     {n_ants}")
     for ti in range(n_ants):
         newlines = [
-            "TELESCOPE {:d} NAME:   {}".format(ti, station_names[ti].upper()),
-            "TELESCOPE {:d} MOUNT:  AZEL".format(ti),
-            "TELESCOPE {:d} OFFSET (m): 0.0000".format(ti),
+            f"TELESCOPE {ti:d} NAME:   {station_names[ti].upper()}",
+            f"TELESCOPE {ti:d} MOUNT:  AZEL",
+            f"TELESCOPE {ti:d} OFFSET (m): 0.0000",
             "TELESCOPE {:d} X (m): {:.8f}".format(ti, station_coords[ti].x.to_value("m")),
             "TELESCOPE {:d} Y (m): {:.8f}".format(ti, station_coords[ti].y.to_value("m")),
             "TELESCOPE {:d} Z (m): {:.8f}".format(ti, station_coords[ti].z.to_value("m")),
-            "TELESCOPE {:d} SHELF:  None".format(ti),
+            f"TELESCOPE {ti:d} SHELF:  None",
         ]
         lines.extend(newlines)
 
@@ -158,19 +158,15 @@ def make_calc(
         "NUM SPACECRAFT:     0",
         "SCAN 0 IDENTIFIER:  No0004",
         "SCAN 0 START (S):   0",
-        "SCAN 0 DUR (S):     {}".format(duration_min * 60),
+        f"SCAN 0 DUR (S):     {duration_min * 60}",
         "SCAN 0 OBS MODE NAME:JWST",
         "SCAN 0 UVSHIFT INTERVAL (NS):2000000000",
         "SCAN 0 AC AVG INTERVAL (NS):2000000",
-        "SCAN 0 NUM PHS CTRS: {}".format(len(source_coords)),
+        f"SCAN 0 NUM PHS CTRS: {len(source_coords)}",
         "SCAN 0 POINTING SRC:0",
     ]
     for si in range(len(source_coords)):
-        newlines.extend(
-            [
-                "SCAN 0 PHS CTR {}:   {}".format(si, si),
-            ]
-        )
+        newlines.extend([f"SCAN 0 PHS CTR {si}:   {si}"])
     lines.extend(newlines)
 
     # ----------------------------
@@ -179,11 +175,11 @@ def make_calc(
     other = [
         "SPECTRAL AVG:       1",
         "TAPER FUNCTION:     UNIFORM",
-        "IM FILENAME:        {}".format(im_filename),
+        f"IM FILENAME:        {im_filename}",
         "FLAG FILENAME:      {}".format(im_filename + ".flag"),
     ]
     lines.extend(other)
 
-    lines = [l + "\n" for l in lines]
+    lines = [ll + "\n" for ll in lines]
     with open(ofile_name, "w") as ofile:
         ofile.writelines(lines)

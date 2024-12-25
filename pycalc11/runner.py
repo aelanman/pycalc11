@@ -7,13 +7,8 @@ from subprocess import check_output
 difxcalc = shutil.which("difxcalc")
 
 
-def run_difxcalc(
-    calcfile,
-    dry_tropo=False,
-    wet_tropo=False,
-    force=False,
-    verbose=True,
-):
+def run_difxcalc(calcfile, dry_tropo=False, wet_tropo=False, force=False, verbose=True):
+    """Run difxcalc11 using calcfile. Used for tests."""
     if difxcalc is None:
         raise ValueError("difxcalc is not installed.")
 

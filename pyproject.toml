@@ -35,17 +35,55 @@ sdist.include = ["pycalc11/_version.py"]
 [tool.pytest.ini_options]
 testpaths = ['"pycalc11/tests"']
 
-[tool.flake8]
-ignore = """
-E226,
-W503"""
-exclude = """
-docs/conf.py,
-setup.py,
-__pycache__,build,dist,htmlcov,licenses"""
+## [tool.flake8]
+## ignore = "W503, N806, E731"
+## max-line-length = 100
+## # it's recommended to have max-complexity ~ 18
+## max-complexity = 30
+## select = B,C,E,W,T4,B9,F
 
-[tool.pycodestyle]
-exclude = """
-docs/conf.py,
-setup.py,
-__pycache__,build,dist,htmlcov,licenses"""
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "W", # pycodestyle warnings
+    "F", # Pyflakes
+    "D", # pydocstyle
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "N", # pep8-naming
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "N806", # non-lowercase variable
+    "B028", # no-explicit-stacklevel for warnings
+    "SIM108", # prefer ternary opperators.
+    "SIM118", # don't use "dict.keys()" -- I prefer to keep this explicit
+    "D203", # one-blank-line-before-class.
+    "D205", # disallows two-line definition lines in docstrings
+    "D105", # requiring docstrings in magic methods
+    "UP015", # explicit file open parameters
+  #  "D212", # multi-line-summary-first-line. We put it on the second line.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"pycalc11/tests/*" = ["D"] # Don't require docstrings for tests
+"pycalc11/utils.py" = ["SIM115"]    # Need to open profiler log  without context for atexit
+"pycalc11/interface.py" = ["N805"]  # We need to violate this for the "state_dep" decorator
+"pycalc11/__init__.py" = ["D", "E402"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 100
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["pycalc11"]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

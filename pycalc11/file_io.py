@@ -1,3 +1,5 @@
+"""Tools for reading .calc and .im files for difxcalc11."""
+
 import numpy as np
 from astropy import units as u
 from astropy.table import QTable

@@ -19,7 +19,7 @@ from pycalc11.imfile import CalcReader
 def get_mod_state(fmod):
     odict = {}
     for k, v in fmod.__dict__.items():
-        if k.startswith("_") or all([dk.startswith("_") for dk in v.__dict__]):
+        if k.startswith("_") or all(dk.startswith("_") for dk in v.__dict__):
             continue
         for item, value in v.__dict__.items():
             odict[k + "_" + item] = deepcopy(value)
@@ -57,30 +57,20 @@ def make_params(nsrcs=305, duration_min=10):
     site_names = ["GBT-VLBA", "VLA_E9", "ALMA", "MWA", "CHIME 0"]
 
     wf_loc = ac.EarthLocation.from_geocentric(  # Haystack westford antenna
-        x=1492206.5970,
-        y=-4458130.5170,
-        z=4296015.5320,
-        unit="m",
+        x=1492206.5970, y=-4458130.5170, z=4296015.5320, unit="m"
     )
 
     ggao_loc = ac.EarthLocation.from_geocentric(  # Goddard, Greenbelt, Maryland
-        x=1130794.76936,
-        y=-4831233.80170,
-        z=3994217.03883,
-        unit="m",
+        x=1130794.76936, y=-4831233.80170, z=3994217.03883, unit="m"
     )
 
     # Add the site NRAO85, since this has multiple unique entries in ocean loading
     # that are distinguished by unique codes, while all having the same name.
     nrao85_3_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1566,
-        lat=38.4296,
-        height=785.847,
+        lon=280.1566, lat=38.4296, height=785.847
     )
     nrao85_1_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1718,
-        lat=38.4359,
-        height=807.687,
+        lon=280.1718, lat=38.4359, height=807.687
     )
 
     site_names = ["WESTFORD", "GGAO7108", "NRAO85 3", "NRAO85 1"] + site_names
@@ -124,7 +114,7 @@ def params_vlbi():
 
 
 def run_calc_2x(
-    calcf_kwargs={},
+    calcf_kwargs,
     calcfile_name="temp.calc",
     base_mode="geocenter",
     dry_atm=False,
@@ -175,11 +165,7 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
     # TODO -- Fix so these compare properly
     # assert compare_dicts(c0, c1)
 
-    quantities = ["delay", "delay_rate", "partials", "times"]
-    atols = {
-        "delay": 0.01 * un.ns,
-        "delay_rate": 1e-11 * un.s * un.Hz,
-    }
+    atols = {"delay": 0.01 * un.ns, "delay_rate": 1e-11 * un.s * un.Hz}
 
     assert_quantity_allclose(quants0["delay"], quants1["delay"], atol=0.01 * un.ns)
     assert_quantity_allclose(
@@ -210,7 +196,7 @@ def test_calc_props(params_vlbi):
 
     # Station positions
     stats = [ac.EarthLocation.from_geocentric(*c, unit="m") for c in ci.station_coords.T]
-    assert all([stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"])])
+    assert all(stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"]))
 
 
 @pytest.mark.filterwarnings("ignore:No ocean")
@@ -266,7 +252,9 @@ def test_ddr_vals(base_mode, params_vlbi):
                         ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us
                     )
                     assert_quantity_allclose(
-                        ap_dlr, ci.delay_rate[ti, s1i, s2i, :], atol=1e-11 * un.s * un.Hz
+                        ap_dlr,
+                        ci.delay_rate[ti, s1i, s2i, :],
+                        atol=1e-11 * un.s * un.Hz,
                     )
 
 
@@ -306,8 +294,8 @@ def test_oc_warnings(params_all):
         ~calc.sitcm.oc_coefs_found[0][1 : ci.nants + 1].astype(bool)
     ]
 
-    for l in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
-        l.sort()
+    for ll in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
+        ll.sort()
 
     assert_array_equal(oc_bad0, oc_bad)
     assert_array_equal(optl_bad0, optl_bad)
@@ -324,8 +312,8 @@ def test_oc_dist_warnings(params_all):
     print([str(wn.message) for wn in warning_list])
     for w in (str(wn.message) for wn in warning_list):
         if "Station positions" in w:
-            assert all([st in w for st in ["VLA_E9", "ALMA"]])
-            assert all([st not in w for st in ["GBT-VLBA"]])
+            assert all(st in w for st in ["VLA_E9", "ALMA"])
+            assert all(st not in w for st in ["GBT-VLBA"])
 
 
 def test_partials_calc(params_vlbi):
@@ -371,8 +359,7 @@ def test_errors(params_all):
         Calc()
 
     with pytest.raises(ValueError, match="Need to rerun adrivr"):
-        ci = Calc(**params_all)
-        ci.delay
+        Calc(**params_all)
 
 
 @pytest.mark.skipif(difxcalc is None, reason="difxcalc must be installed for this test")
@@ -415,7 +402,7 @@ def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        ci = Calc(**params_vlbi)
+        Calc(**params_vlbi)
 
     nants = len(params_vlbi["station_coords"])
     names = params_vlbi["station_names"]

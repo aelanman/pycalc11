@@ -1,4 +1,4 @@
-exclude: '(^pycalc11/data/|^calc11/.*|README.rst)'
+exclude: '(^pycalc11/data/|^calc11/.*|README.rst|ci/.*)'
 
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -14,18 +14,11 @@ repos:
           - id: end-of-file-fixer
           - id: mixed-line-ending
             args: ['--fix=no']
-    - repo: https://github.com/pycqa/flake8
-      rev: 3.7.9
+
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.6.4
       hooks:
-      - id: flake8
-        additional_dependencies:
-            - flake8-builtins
-            - flake8-comprehensions
-            - flake8-pytest
-    - repo: https://github.com/psf/black
-      rev: 22.3.0
-      hooks:
-          - id: black
-            language_version: python3.9
-            args:
-              - --line-length=90
+          - id: ruff          # Linter
+            args: ['--fix']
+          - id: ruff-format   # Replacement for black

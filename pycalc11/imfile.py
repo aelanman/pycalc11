@@ -1,7 +1,4 @@
-#!/bin/env python
-"""
-Module to parse difxcalc output files (.im).
-"""
+"""Module to parse difxcalc output files (.im)."""
 
 import numpy as np
 from datetime import datetime
@@ -26,7 +23,7 @@ class TimeRange:
 
     def __contains__(self, other):
         """
-        Check if start <= other <= end
+        Check if start <= other <= end.
 
         Parameters
         ----------
@@ -42,8 +39,7 @@ class TimeRange:
         )
 
     def __repr__(self):
-        """String representation."""
-        return "{} -- {}".format(self.start.isot, self.end.isot)
+        return f"{self.start.isot} -- {self.end.isot}"
 
 
 class CalcReader:
@@ -78,7 +74,8 @@ class CalcReader:
             Path to file to load. Optional.
         """
         self.filename = filename
-        lines = open(filename, "r").readlines()
+        with open(filename, "r") as fh:
+            lines = fh.readlines()
 
         # Form a dictionary of data in the file.
         # This needs to be done line by line, because some line prefixes are the same,
@@ -88,7 +85,6 @@ class CalcReader:
         cur_scan = -1
         cur_poly = -1
         for line in lines:
-
             pref, dat = line.split(":")
             dat = dat.rstrip()
             pref = pref.replace(" ", "_")
