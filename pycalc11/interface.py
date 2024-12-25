@@ -271,9 +271,7 @@ class Calc:
         """
         jstart = time
         jstop = time + TimeDelta(duration_min * 60, format="sec")
-        calc.con.kctic = (
-            1  # Ensures CT = AT. Shouldn't make a difference, since CT isn't used.
-        )
+        calc.con.kctic = 1  # Ensures CT = AT. Shouldn't make a difference, since CT isn't used.
         calc.ut1cm.xintv[0] = jstart.jd
         calc.ut1cm.xintv[1] = jstop.jd
         calc.ut1cm.intrvl[:, 0] = list(jstart.ymdhms)[:5]  # intrvl[:, 1] unused
@@ -309,9 +307,7 @@ class Calc:
         calc.wobcm.wobif = [eoptag[0] + 2400000.5, eoptag[1] - eoptag[0], numeop]
         calc.wobcm.xywob[:, :2] = np.transpose(xy)
         # Rounded to match difxcalc's internal value
-        calc.ut1cm.ut1pt[:2] = np.round(
-            [tai_utc[ti] - ut1_utc[ti] for ti in range(2)], decimals=8
-        )
+        calc.ut1cm.ut1pt[:2] = np.round([tai_utc[ti] - ut1_utc[ti] for ti in range(2)], decimals=8)
         calc.calc_input.xleap_sec = tai_utc[0]
         self._rerun = True
 
@@ -334,12 +330,7 @@ class Calc:
         self._partials = np.zeros(
             (Ntimes, Nstat1, Nstat2, Nsrcs),
             dtype=np.dtype(
-                [
-                    ("dD_dRA", "f8"),
-                    ("dDR_dRA", "f8"),
-                    ("dD_dDEC", "f8"),
-                    ("dDR_dDEC", "f8"),
-                ]
+                [("dD_dRA", "f8"), ("dDR_dRA", "f8"), ("dD_dDEC", "f8"), ("dDR_dDEC", "f8")]
             ),
         )
         self._times = np.full(Ntimes, fill_value="NaT", dtype="<M8[us]")
@@ -354,9 +345,7 @@ class Calc:
     def base_mode(self, value):
         valid = ["baseline", "geocenter"]
         if not isinstance(value, str) or value.strip() not in valid:
-            raise ValueError(
-                "base_mode must be one of the following: " + ", ".join(valid)
-            )
+            raise ValueError("base_mode must be one of the following: " + ", ".join(valid))
         # In calc, base_mode must be a 10 character lowercase string.
         calc.contrl.base_mode[()] = value.ljust(10)
         self._rerun = True
@@ -596,9 +585,7 @@ class Calc:
             vals = self._partials[..., 1:, :, :]
         else:
             vals = self._partials
-        return Quantity(
-            vals, unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"), copy=False
-        )
+        return Quantity(vals, unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"), copy=False)
 
 
 class OceanFiles:
@@ -639,12 +626,7 @@ class OceanFiles:
     def read_oc(cls):
         """Read ocean loading coefficients from file."""
         dt = np.dtype(
-            [
-                ("name", "U8"),
-                ("code", "U4"),
-                ("lonlat_deg", "f8", (3,)),
-                ("coefs", "f8", (6, 11)),
-            ]
+            [("name", "U8"), ("code", "U4"), ("lonlat_deg", "f8", (3,)), ("coefs", "f8", (6, 11))]
         )
         with open(cls.OC_file, "r") as oc_file:
             ocean_load = []
@@ -751,9 +733,7 @@ class OceanFiles:
                     continue
                 ind = oc_names.index(sn)
                 lon, lat, height = cls.oc_data["lonlat_deg"][ind]
-                ref_pos = ac.SkyCoord(
-                    ac.EarthLocation.from_geodetic(lon=lon, lat=lat).itrs
-                )
+                ref_pos = ac.SkyCoord(ac.EarthLocation.from_geodetic(lon=lon, lat=lat).itrs)
                 dist = ref_pos.separation(ac.SkyCoord(site_pos[si].itrs))
                 if dist.rad * R_earth.to_value("m") > sep_tol:
                     d = dist.rad * R_earth

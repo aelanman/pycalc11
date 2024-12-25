@@ -66,12 +66,8 @@ def make_params(nsrcs=305, duration_min=10):
 
     # Add the site NRAO85, since this has multiple unique entries in ocean loading
     # that are distinguished by unique codes, while all having the same name.
-    nrao85_3_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1566, lat=38.4296, height=785.847
-    )
-    nrao85_1_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1718, lat=38.4359, height=807.687
-    )
+    nrao85_3_loc = ac.EarthLocation.from_geodetic(lon=280.1566, lat=38.4296, height=785.847)
+    nrao85_1_loc = ac.EarthLocation.from_geodetic(lon=280.1718, lat=38.4359, height=807.687)
 
     site_names = ["WESTFORD", "GGAO7108", "NRAO85 3", "NRAO85 1"] + site_names
     site_locs = [wf_loc, ggao_loc, nrao85_3_loc, nrao85_1_loc] + site_locs
@@ -114,11 +110,7 @@ def params_vlbi():
 
 
 def run_calc_2x(
-    calcf_kwargs,
-    calcfile_name="temp.calc",
-    base_mode="geocenter",
-    dry_atm=False,
-    wet_atm=False,
+    calcf_kwargs, calcfile_name="temp.calc", base_mode="geocenter", dry_atm=False, wet_atm=False
 ):
     quantities = ["delay", "delay_rate", "partials", "times"]
 
@@ -130,9 +122,7 @@ def run_calc_2x(
 
     # Run with calc file
     make_calc(**calcf_kwargs, ofile_name=calcfile_name)
-    ci = Calc(
-        calc_file=calcfile_name, base_mode=base_mode, dry_atm=dry_atm, wet_atm=wet_atm
-    )
+    ci = Calc(calc_file=calcfile_name, base_mode=base_mode, dry_atm=dry_atm, wet_atm=wet_atm)
     ci.run_driver()
     del ci.calc_file
     c0 = get_mod_state(calc)
@@ -177,9 +167,7 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
             atol = atols["delay_rate"] / un.rad
         else:
             atol = atols["delay"] / un.rad
-        assert_quantity_allclose(
-            quants0["partials"][nm], quants1["partials"][nm], atol=atol
-        )
+        assert_quantity_allclose(quants0["partials"][nm], quants1["partials"][nm], atol=atol)
 
     assert np.all(quants0["times"] == quants1["times"])
 
@@ -248,13 +236,9 @@ def test_ddr_vals(base_mode, params_vlbi):
                 for s2i in range(s1i + 1, nstat):
                     ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i])
                     ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i])
+                    assert_quantity_allclose(ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us)
                     assert_quantity_allclose(
-                        ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us
-                    )
-                    assert_quantity_allclose(
-                        ap_dlr,
-                        ci.delay_rate[ti, s1i, s2i, :],
-                        atol=1e-11 * un.s * un.Hz,
+                        ap_dlr, ci.delay_rate[ti, s1i, s2i, :], atol=1e-11 * un.s * un.Hz
                     )
 
 
@@ -287,12 +271,8 @@ def test_oc_warnings(params_all):
     #   ocean pole tide loading coefficients file
     # calc.sitcm.oc_coefs_found[1, ii] == 1 if calc.calc_input.sites[ii] found in
     #   ocean loading data file.
-    oc_bad = ci.station_names[
-        ~calc.sitcm.oc_coefs_found[1][1 : ci.nants + 1].astype(bool)
-    ]
-    optl_bad = ci.station_names[
-        ~calc.sitcm.oc_coefs_found[0][1 : ci.nants + 1].astype(bool)
-    ]
+    oc_bad = ci.station_names[~calc.sitcm.oc_coefs_found[1][1 : ci.nants + 1].astype(bool)]
+    optl_bad = ci.station_names[~calc.sitcm.oc_coefs_found[0][1 : ci.nants + 1].astype(bool)]
 
     for ll in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
         ll.sort()
@@ -305,8 +285,7 @@ def test_oc_dist_warnings(params_all):
     # Last one is assumed to be at DRAO, but given to calc as algo. Should give big offset.
     with warnings.catch_warnings(record=True) as warning_list:
         OceanFiles.check_sites(
-            site_names=params_all["station_names"],
-            site_pos=params_all["station_coords"],
+            site_names=params_all["station_names"], site_pos=params_all["station_coords"]
         )
 
     print([str(wn.message) for wn in warning_list])
@@ -416,9 +395,7 @@ def test_coef_vals(params_vlbi):
                 calc.sitcm.sithoa[:, 0, 1 : nants + 1],  # horizontal amplitudes [m]
                 calc.sitcm.sithoa[:, 1, 1 : nants + 1],
                 np.degrees(calc.sitcm.sitoph[..., 1 : nants + 1]),  # Vertical phase [deg]
-                np.degrees(
-                    calc.sitcm.sithop[:, 0, 1 : nants + 1]
-                ),  # horizontal phases [deg]
+                np.degrees(calc.sitcm.sithop[:, 0, 1 : nants + 1]),  # horizontal phases [deg]
                 np.degrees(calc.sitcm.sithop[:, 1, 1 : nants + 1]),
             )
         ),

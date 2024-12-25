@@ -22,3 +22,12 @@ repos:
           - id: ruff          # Linter
             args: ['--fix']
           - id: ruff-format   # Replacement for black
+
+
+    - repo: https://github.com/psf/black
+      rev: 22.3.0
+      hooks:
+          - id: black
+            language_version: python3.9
+            args:
+              - --line-length=100

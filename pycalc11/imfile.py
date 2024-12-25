@@ -31,11 +31,9 @@ class TimeRange:
             Time to check.
         """
         return (
-            other.mjd > self.start.mjd
-            or np.isclose(other.mjd, self.start.mjd, atol=1e-6, rtol=0.0)
+            other.mjd > self.start.mjd or np.isclose(other.mjd, self.start.mjd, atol=1e-6, rtol=0.0)
         ) and (
-            other.mjd <= self.end.mjd
-            or np.isclose(other.mjd, self.end.mjd, atol=1e-6, rtol=0.0)
+            other.mjd <= self.end.mjd or np.isclose(other.mjd, self.end.mjd, atol=1e-6, rtol=0.0)
         )
 
     def __repr__(self):
@@ -114,16 +112,7 @@ class CalcReader:
 
             if any(
                 key in pref
-                for key in [
-                    "DELAY",
-                    "DRY",
-                    "WET",
-                    "AZ",
-                    "EL_GEOM",
-                    "U_(m)",
-                    "V_(m)",
-                    "W_(m)",
-                ]
+                for key in ["DELAY", "DRY", "WET", "AZ", "EL_GEOM", "U_(m)", "V_(m)", "W_(m)"]
             ):
                 lst = np.array(dat.split()).astype(float)
                 dat = np.poly1d(lst[::-1])
@@ -173,9 +162,7 @@ class CalcReader:
                 polyind = pi
                 break
         if polyind is None:
-            raise ValueError(
-                f"Time {time} is not covered by current polynomials for scan {scan}."
-            )
+            raise ValueError(f"Time {time} is not covered by current polynomials for scan {scan}.")
 
         pscan, pnum = polyind
         key = f"SCAN_{pscan}_POLY_{pnum}_SRC_{src_num}_ANT_{ant_num}"

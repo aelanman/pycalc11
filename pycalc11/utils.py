@@ -129,18 +129,10 @@ def do_profiling(func_list=None, time=True, memory=False):
     global prof
 
     if func_list is None:
-        func_list = [
-            "run_driver",
-            "set_stations",
-            "set_sources",
-            "alloc_out_arrays",
-            "check_sites",
-        ]
+        func_list = ["run_driver", "set_stations", "set_sources", "alloc_out_arrays", "check_sites"]
 
     if memory and time:
-        warnings.warn(
-            "Cannot run memory and time profilers at the same time. Skipping profiling."
-        )
+        warnings.warn("Cannot run memory and time profilers at the same time. Skipping profiling.")
         return
 
     if time:
@@ -160,9 +152,7 @@ def do_profiling(func_list=None, time=True, memory=False):
     import pycalc11 as _pycalc11
 
     if prof is None:
-        warnings.warn(
-            "No profiling requested. Choose memory or time = True to use profiling."
-        )
+        warnings.warn("No profiling requested. Choose memory or time = True to use profiling.")
         return
 
     # Add module functions to profiler.

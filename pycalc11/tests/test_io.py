@@ -11,9 +11,7 @@ from pycalc11.file_io import parse_calc, parse_im
 CRAB_CALC = get_pkg_data_filename(
     os.path.join("data", "B0531+21_CHIME_ARO10m_59153.45269019096.calc")
 )
-CRAB_IM = get_pkg_data_filename(
-    os.path.join("data", "B0531+21_CHIME_ARO10m_59153.45269019096.im")
-)
+CRAB_IM = get_pkg_data_filename(os.path.join("data", "B0531+21_CHIME_ARO10m_59153.45269019096.im"))
 
 
 def test_read_calc():

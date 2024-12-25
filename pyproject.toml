@@ -42,6 +42,8 @@ testpaths = ['"pycalc11/tests"']
 ## max-complexity = 30
 ## select = B,C,E,W,T4,B9,F
 
+[tool.ruff]
+line-length = 100
 
 [tool.ruff.lint]
 select = [

@@ -201,9 +201,7 @@ def parse_im(name):
                     field = k_list[4].lower()
                     src, ant = int(k_list[1]), int(k_list[3])
                     v = np.array([float(v_) for v_ in v.split()])
-                    unit = u.Unit(
-                        "deg" if field == "az" or field == "el" else k_list[5][1:-1]
-                    )
+                    unit = u.Unit("deg" if field == "az" or field == "el" else k_list[5][1:-1])
                     add_to_table(
                         t,
                         field,
@@ -217,9 +215,7 @@ def parse_im(name):
                 # Really not a match.  Signal that we are no longer matching,
                 # and pass through to do something else with this line.
                 kind = None
-                assert not (
-                    scan_poly and meta
-                ), "Meta data found after start of SCAN POLY."
+                assert not (scan_poly and meta), "Meta data found after start of SCAN POLY."
 
             if "NUM" in k_list:
                 if k_list == ["NUM", "SCANS"]:
