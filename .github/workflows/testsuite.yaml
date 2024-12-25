@@ -40,16 +40,16 @@ jobs:
       - name: Get current date
         id: date
         run: echo "name=date::$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-      - name: cache-kernels
+      - name: cache-data
         uses: actions/cache@v4
         with:
           path: ~/ap_cache
-          key: kernel_cache-${{ steps.date.outputs.date }}
+          key: data_cache-${{ steps.date.outputs.date }}
       - name: Download and cache
         run: |
           pip install astropy
           python ./ci/cache_data.py save
-        if: steps.cache-kernels.outputs.cache-hit != 'true'
+        if: steps.cache-data.outputs.cache-hit != 'true'
 
   tests:
     env:
@@ -79,11 +79,11 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/ap_cache
-          key: kernel_cache-${{ steps.date.outputs.date }}
-      - name: load kernels
+          key: data_cache-${{ steps.date.outputs.date }}
+      - name: load data
         run: |
           pip install astropy
-          python ./ci/cache_kernels.py load
+          python ./ci/cache_data.py load
       - name: Install
         run: |
           pip install .[dev]
