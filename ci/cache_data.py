@@ -13,9 +13,7 @@ import os
 import sys
 
 home = os.path.expanduser("~")
-path = os.path.join(home, "ap_cache")
-cache_file = os.path.join(path, "astropy_cache.zip")
-os.makedirs(path, exist_ok=True)
+cache_file = os.path.join(home, "astropy_cache.zip")
 
 # Download iers data
 Time.now().ut1
