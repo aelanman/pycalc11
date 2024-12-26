@@ -1,5 +1,5 @@
 [build-system]
-requires = ["wheel", "scikit-build-core", "numpy>=1.21", "setuptools_scm[toml]>=6.2"]
+requires = ["wheel", "scikit-build-core", "numpy>=1.21,!=2.0.*", "setuptools_scm[toml]>=6.2"]
 build-backend = "scikit_build_core.build"
 
 [project]
