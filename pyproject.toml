@@ -44,6 +44,11 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+exclude = [
+    "src/pycalc11/data/**",
+    "src/calc11/**",
+]
+force-exclude=true
 
 [tool.ruff.lint]
 select = [
@@ -71,10 +76,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"pycalc11/tests/*" = ["D"] # Don't require docstrings for tests
-"pycalc11/utils.py" = ["SIM115"]    # Need to open profiler log  without context for atexit
-"pycalc11/interface.py" = ["N805"]  # We need to violate this for the "state_dep" decorator
-"pycalc11/__init__.py" = ["D", "E402"]
+"tests/*" = ["D", "B"] # Don't require docstrings for tests; also allow "useless expressions"
+"src/pycalc11/utils.py" = ["SIM115"]    # Need to open profiler log  without context for atexit
+"src/pycalc11/interface.py" = ["N805"]  # We need to violate this for the "state_dep" decorator
+"src/pycalc11/__init__.py" = ["D", "E402"]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true

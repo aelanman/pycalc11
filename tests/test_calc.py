@@ -31,7 +31,7 @@ def compare_dicts(c0, c1, quiet=False):
     for k in c1.keys():
         v0 = np.atleast_1d(c0[k])
         v1 = np.atleast_1d(c1[k])
-        if not v0.dtype == v1.dtype:
+        if v0.dtype != v1.dtype:
             diffs.append(k)
             continue
         if np.issubdtype(v0.dtype, np.number):

@@ -23,7 +23,6 @@ repos:
             args: ['--fix']
           - id: ruff-format   # Replacement for black
 
-
     - repo: https://github.com/psf/black
       rev: 22.3.0
       hooks:
