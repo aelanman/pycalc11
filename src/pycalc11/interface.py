@@ -57,6 +57,11 @@ class Calc:
     calc_file: str
         Path to a .calc configuration file.
         If provided, all other parameters are optional.
+    check_sites: bool
+        Check that station names have valid ocean loading (OC) and pole tide coefficients (OPTL).
+        Also check that positions entered are consistent with positions in the OPTL and OC datasets.
+        If checks fails, issues a warning.
+        Default True
 
     Notes
     -----
@@ -98,6 +103,7 @@ class Calc:
         wet_atm=True,
         calc_file=None,
         d_interval=24,
+        check_sites=True,
     ):
         # Setting defaults
         self._reset()  # Clear if there's another instance.
@@ -116,6 +122,7 @@ class Calc:
         #   exact (include partials), uncorr, approx, noatmo(exact with no atmo)
 
         # Steps within 2 min chunks
+        self.check_sites = check_sites
         calc.contrl.d_interval = d_interval  # Step size in s throughout 2 min epoch
         calc.contrl.epoch2m = (
             120.0001 / calc.contrl.d_interval
@@ -471,7 +478,8 @@ class Calc:
             calc.calc_input.sites[ti + 1] = np.bytes_(tnames[ti].ljust(10))
 
         # Check ocean loading params are available
-        OceanFiles.check_sites(self.station_names)
+        if self.check_sites:
+            OceanFiles.check_sites(self.station_names)
         self._rerun = True
 
     @property

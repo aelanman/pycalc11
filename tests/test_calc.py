@@ -29,13 +29,16 @@ def get_mod_state(fmod):
 def compare_dicts(c0, c1, quiet=False):
     diffs = []
     for k in c1.keys():
-        v0 = c0[k]
-        v1 = c1[k]
-        if np.atleast_1d(np.isreal(v0)).all():
+        v0 = np.atleast_1d(c0[k])
+        v1 = np.atleast_1d(c1[k])
+        if not v0.dtype == v1.dtype:
+            diffs.append(k)
+            continue
+        if np.issubdtype(v0.dtype, np.number):
             if not np.allclose(v0, v1):
                 diffs.append(k)
         else:
-            if not np.atleast_1d(v0 == v1).all():
+            if not np.all(v0 == v1):
                 diffs.append(k)
     if len(diffs) == 0:
         return True
@@ -332,13 +335,14 @@ def test_partials_calc(params_vlbi):
 
 
 def test_errors(params_all):
-    # Correct error is raised when trying to access without running driver
     # Correct error is raised when initialized without params
+    # Correct error is raised when trying to access without running driver
     with pytest.raises(ValueError, match="If calc_file is not set"):
         Calc()
 
     with pytest.raises(ValueError, match="Need to rerun adrivr"):
-        Calc(**params_all)
+        ci = Calc(**params_all, check_sites=False)
+        ci.delay
 
 
 @pytest.mark.skipif(difxcalc is None, reason="difxcalc must be installed for this test")
@@ -419,7 +423,7 @@ def test_coef_vals(params_vlbi):
 
 @pytest.mark.parametrize("kv", make_params(nsrcs=30).items())
 def test_change_quantities(params_vlbi, kv):
-    ci = Calc(**params_vlbi)
+    ci = Calc(**params_vlbi, check_sites=False)
     ci.run_driver()
     key, val = kv
     setattr(ci, key, val)
