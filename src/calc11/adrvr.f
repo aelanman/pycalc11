@@ -162,7 +162,7 @@
       DATA SJD /-999.D6/
 !
 ! 1.2.3.1   SAVE BLOCK -
-       SAVE SITEA, SITEP,                                              &
+       COMMON /driver/ SITEA, SITEP,                                  &
      &      SITEV, SITLAT, STAR, SUNCU, TCTOCF, TIDEP, SITRAD,         &
      &      TIDEV, XLOADP, XLOADV, ZPATH, EPS,                         &
      &      POLTDP, POLTDV, SUN, AXOFF, CFBASE, DIURNV, DLPGR, EPBASE, &

@@ -5,9 +5,9 @@ import warnings
 from astropy.time import Time, TimeDelta
 from astropy import coordinates as ac
 from astropy.constants import R_earth
-from astropy.units import Quantity
+from astropy import units as un
 from datetime import datetime
-from scipy.interpolate import Akima1DInterpolator as Akima1DInterpolator
+from scipy.interpolate import Akima1DInterpolator
 from .utils import get_leap_seconds, iers_tab
 from . import calc11 as calc
 
@@ -207,6 +207,13 @@ class Calc:
             self._times[ii * e2m : ii * e2m + e2m] = [
                 np.datetime64(datetime(*t)) for t in calc.outputs.iymdhms_f[:-1]
             ]
+            self._uvw[slc] = np.stack(
+                [
+                    calc.outputs.ubase_f[:-1, :, :, 1:],
+                    calc.outputs.vbase_f[:-1, :, :, 1:],
+                    calc.outputs.wbase_f[:-1, :, :, 1:],
+                ], axis=-1,
+            )
 
         self._rerun = False
 
@@ -225,7 +232,7 @@ class Calc:
             The delays in seconds evaluated at t_0
         """
         x = (t_0 - self.times[0]).sec
-        return self.delays_dt(x)
+        return self.delays_dt(x) * un.s
 
     @property
     def delays_dt(self):
@@ -341,6 +348,7 @@ class Calc:
             ),
         )
         self._times = np.full(Ntimes, fill_value="NaT", dtype="<M8[us]")
+        self._uvw = np.zeros((Ntimes, Nstat1, Nstat2, Nsrcs, 3))
         self._rerun = True
 
     @property
@@ -485,7 +493,7 @@ class Calc:
     @property
     def station_coords(self):
         """Station coordinates in ITRF."""
-        return Quantity(calc.sitcm.sitxyz[:, 1 : self.nants + 1], unit="m", copy=False)
+        return un.Quantity(calc.sitcm.sitxyz[:, 1 : self.nants + 1], unit="m", copy=False)
 
     @station_coords.setter
     def station_coords(self, tpos):
@@ -561,7 +569,7 @@ class Calc:
             val = self._delay[:, 1:, :, :]
         else:
             val = self._delay
-        return Quantity(val, unit="s", copy=False)
+        return un.Quantity(val, unit="s", copy=False)
 
     @property
     @_state_dep
@@ -575,7 +583,7 @@ class Calc:
             val = self._delay_rate[:, 1:, :, :]
         else:
             val = self._delay_rate
-        return Quantity(val, unit="s Hz", copy=False)
+        return un.Quantity(val, unit="s Hz", copy=False)
 
     @property
     @_state_dep
@@ -593,7 +601,43 @@ class Calc:
             vals = self._partials[..., 1:, :, :]
         else:
             vals = self._partials
-        return Quantity(vals, unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"), copy=False)
+        return un.Quantity(vals, unit=("s/rad", "s Hz / rad", "s/rad", "s Hz/rad"), copy=False)
+
+    @property
+    @_state_dep
+    def uvw(self):
+        """
+        UVW coordinates of antennas.
+
+        Axes: (time, ant1, ant2, src, component)
+              component 0: u, 1: v, 2: w
+        """
+        if self.base_mode == 'baseline':
+            vals = self._uvw[:, 1:, :, :, :]
+        else:
+            vals = self._uvw
+
+        return un.Quantity(vals, unit='m', copy=False)
+
+    def uvw_interp(self, t_0):
+        """
+        Interpolate UVW coordinates.
+
+        Parameters
+        -----------------
+        t_0 : astropy.time.Time
+            Absolute time(s) to interpolate to.
+
+        Returns
+        -----------
+        astropy.Quantity
+            uvw coordinates evaluated at t_0
+            axes (time, ant1, ant2, src, component)
+        """
+        spl = Akima1DInterpolator(
+            (self.times - self.times[0]).sec, self.uvw.to_value('km'), axis=0
+        )
+        return spl((t_0 - self.times[0]).sec) * un.km
 
 
 class OceanFiles:

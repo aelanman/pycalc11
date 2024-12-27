@@ -75,9 +75,14 @@ def make_params(nsrcs=305, duration_min=10):
     site_names = ["WESTFORD", "GGAO7108", "NRAO85 3", "NRAO85 1"] + site_names
     site_locs = [wf_loc, ggao_loc, nrao85_3_loc, nrao85_1_loc] + site_locs
 
+    min_alt = -90.0
+    min_alt_rad = np.radians(min_alt)
+    rv = np.random.uniform(-1, np.cos(min_alt_rad + np.pi / 2), nsrcs)
+    alts = np.arccos(rv) - np.pi / 2
+
     srcs = ac.SkyCoord(
         az=np.random.uniform(0, 2 * np.pi, nsrcs),
-        alt=np.random.uniform(np.radians(70), np.pi / 2, nsrcs),
+        alt=alts,
         unit="rad",
         frame="altaz",
         obstime=time,
@@ -207,7 +212,7 @@ def test_kwd_override(params_all, tmpdir):
 @pytest.mark.parametrize("base_mode", ["geocenter", "baseline"])
 def test_ddr_vals(base_mode, params_vlbi):
     #   > D, DR are close to expectation from a rough astropy calculation.
-    #   (Eventually, set tolerances based on expected astropy accuracy.)
+    # Tolerance of 50 ns in delay, 1e-11 s Hz in delay rate.
     pars = deepcopy(params_vlbi)
 
     # remove CHIME, because the one ~3000 km NW -- SE baseline is creating some
@@ -222,24 +227,31 @@ def test_ddr_vals(base_mode, params_vlbi):
     nstat = len(st_nmes)
     gc = ac.EarthLocation.from_geocentric(0, 0, 0, unit="m")
 
-    # TODO -- check that the tolerances are sensible, especially delay rate
-    #   > Do we expect O(5 us) errors on delay from astropy?
+    src_uvecs = srcs.transform_to(ac.ITRS(obstime=Time(ci.times[0], format='unix',scale='utc'))).cartesian.xyz.value.T
+    stat_vecs = np.array([crd.itrs.cartesian.xyz.to_value("m") for crd in params_vlbi['station_coords']])
+    bl_lens = np.linalg.norm(stat_vecs, axis=1)
+    stat_uvecs = (stat_vecs.T / bl_lens).T
+    bl_angs = np.arccos(np.einsum("ij,kj->ik", src_uvecs, stat_uvecs))
 
+    ap_delays = np.zeros((len(srcs), ci.times.size, nstat))
+    pc_delays = np.zeros((len(srcs), ci.times.size, nstat))
     for ti, tt in enumerate(ci.times):
         if base_mode == "geocenter":
             for si in range(nstat):
                 ap_del = astropy_delay(srcs, tt, st_locs[si], gc)
                 ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc)
-                assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, atol=5 * un.us)
-                assert_quantity_allclose(
-                    ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz
-                )
+                assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, atol=50 * un.ns)
+                assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz)
+                ap_delays[:, ti, si] = ap_del.to_value("us")
+                pc_delays[:, ti, si] = ci.delay[ti, 0, si, :].to_value("us")
         if base_mode == "baseline":
             for s1i in range(nstat):
-                for s2i in range(s1i + 1, nstat):
+                for s2i in range(s1i+1, nstat):
                     ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i])
                     ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i])
-                    assert_quantity_allclose(ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us)
+                    assert_quantity_allclose(
+                        ci.delay[ti, s1i, s2i, :], ap_del, atol=50 * un.ns
+                    )
                     assert_quantity_allclose(
                         ap_dlr, ci.delay_rate[ti, s1i, s2i, :], atol=1e-11 * un.s * un.Hz
                     )
@@ -448,3 +460,36 @@ def test_epochs():
     t0 = pars["start_time"]
     t1 = t0 + TimeDelta(3600, format="sec")
     assert ci.times.min() <= t0 and t1 <= ci.times.max()
+
+
+def test_uvw(params_vlbi):
+    pars = deepcopy(params_vlbi)
+
+    pars['duration_min'] = 0.5
+    ci = Calc(**pars, dry_atm=False, wet_atm=False)
+    ci.run_driver()
+    st_nmes = pars["station_names"]
+    st_locs = pars["station_coords"]
+    srcs = ac.SkyCoord(params_vlbi["source_coords"])
+    nstat = len(st_nmes)
+
+    crds = np.array([st.itrs.cartesian.xyz.to_value('m') for st in pars['station_coords']])
+    st_locs_itrs = ac.EarthLocation(x=crds[:,0], y=crds[:,1], z=crds[:,2], unit='m')
+
+    t0 = ci.times[0]
+    # Compute UVWs geometrically
+    # Largely drawn from https://gist.github.com/demorest/8c8bca4ac5860796593ca07006cc3df6
+    antpos_c_ap = ac.GCRS(
+        st_locs_itrs.get_gcrs_posvel(t0)[0], obstime=t0
+    )
+    uvw_frame = srcs.transform_to(antpos_c_ap).skyoffset_frame()
+    antpos_uvw = antpos_c_ap[:, None].transform_to(uvw_frame)
+    # Offsetframe is in WUV, so shuffle into UVW
+    antpos_uvw = ac.CartesianRepresentation(
+        x = -antpos_uvw.cartesian.y,
+        y = -antpos_uvw.cartesian.z,
+        z = -antpos_uvw.cartesian.x,
+    )
+    uvw_py = ci.uvw[0, 0, ...]
+
+    # TODO -- tolerance for comparison?
