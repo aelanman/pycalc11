@@ -1,5 +1,5 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/sourcelist.cmake)
-include_directories(${calc11_SOURCE_DIR}/calc11/src)
+#include_directories(${calc11_SOURCE_DIR}/src/calc11)
 
 #set(fortran_src_file "${CMAKE_CURRENT_BINARY_DIR}/calc11.f90")
 #set(fortran_src_file "${CMAKE_BINARY_DIR}/calc11/src/calc11.f90")

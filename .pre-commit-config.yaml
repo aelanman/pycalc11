@@ -1,0 +1,32 @@
+exclude: '(^src/pycalc11/data/|^src/calc11/.*|README.rst|ci/.*)'
+
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.3.0
+      hooks:
+          - id: trailing-whitespace
+          - id: check-ast
+          - id: check-json
+          - id: check-merge-conflict
+          - id: check-xml
+          - id: check-yaml
+          - id: debug-statements
+          - id: end-of-file-fixer
+          - id: mixed-line-ending
+            args: ['--fix=no']
+
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.6.4
+      hooks:
+          - id: ruff          # Linter
+            args: ['--fix']
+          - id: ruff-format   # Replacement for black
+
+    - repo: https://github.com/psf/black
+      rev: 22.3.0
+      hooks:
+          - id: black
+            language_version: python3.9
+            args:
+              - --line-length=100
