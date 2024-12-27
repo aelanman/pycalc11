@@ -19,7 +19,7 @@ from pycalc11.imfile import CalcReader
 def get_mod_state(fmod):
     odict = {}
     for k, v in fmod.__dict__.items():
-        if k.startswith("_") or all([dk.startswith("_") for dk in v.__dict__]):
+        if k.startswith("_") or all(dk.startswith("_") for dk in v.__dict__):
             continue
         for item, value in v.__dict__.items():
             odict[k + "_" + item] = deepcopy(value)
@@ -29,13 +29,16 @@ def get_mod_state(fmod):
 def compare_dicts(c0, c1, quiet=False):
     diffs = []
     for k in c1.keys():
-        v0 = c0[k]
-        v1 = c1[k]
-        if np.atleast_1d(np.isreal(v0)).all():
+        v0 = np.atleast_1d(c0[k])
+        v1 = np.atleast_1d(c1[k])
+        if v0.dtype != v1.dtype:
+            diffs.append(k)
+            continue
+        if np.issubdtype(v0.dtype, np.number):
             if not np.allclose(v0, v1):
                 diffs.append(k)
         else:
-            if not np.atleast_1d(v0 == v1).all():
+            if not np.all(v0 == v1):
                 diffs.append(k)
     if len(diffs) == 0:
         return True
@@ -57,31 +60,17 @@ def make_params(nsrcs=305, duration_min=10):
     site_names = ["GBT-VLBA", "VLA_E9", "ALMA", "MWA", "CHIME 0"]
 
     wf_loc = ac.EarthLocation.from_geocentric(  # Haystack westford antenna
-        x=1492206.5970,
-        y=-4458130.5170,
-        z=4296015.5320,
-        unit="m",
+        x=1492206.5970, y=-4458130.5170, z=4296015.5320, unit="m"
     )
 
     ggao_loc = ac.EarthLocation.from_geocentric(  # Goddard, Greenbelt, Maryland
-        x=1130794.76936,
-        y=-4831233.80170,
-        z=3994217.03883,
-        unit="m",
+        x=1130794.76936, y=-4831233.80170, z=3994217.03883, unit="m"
     )
 
     # Add the site NRAO85, since this has multiple unique entries in ocean loading
     # that are distinguished by unique codes, while all having the same name.
-    nrao85_3_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1566,
-        lat=38.4296,
-        height=785.847,
-    )
-    nrao85_1_loc = ac.EarthLocation.from_geodetic(
-        lon=280.1718,
-        lat=38.4359,
-        height=807.687,
-    )
+    nrao85_3_loc = ac.EarthLocation.from_geodetic(lon=280.1566, lat=38.4296, height=785.847)
+    nrao85_1_loc = ac.EarthLocation.from_geodetic(lon=280.1718, lat=38.4359, height=807.687)
 
     site_names = ["WESTFORD", "GGAO7108", "NRAO85 3", "NRAO85 1"] + site_names
     site_locs = [wf_loc, ggao_loc, nrao85_3_loc, nrao85_1_loc] + site_locs
@@ -124,11 +113,7 @@ def params_vlbi():
 
 
 def run_calc_2x(
-    calcf_kwargs={},
-    calcfile_name="temp.calc",
-    base_mode="geocenter",
-    dry_atm=False,
-    wet_atm=False,
+    calcf_kwargs, calcfile_name="temp.calc", base_mode="geocenter", dry_atm=False, wet_atm=False
 ):
     quantities = ["delay", "delay_rate", "partials", "times"]
 
@@ -140,9 +125,7 @@ def run_calc_2x(
 
     # Run with calc file
     make_calc(**calcf_kwargs, ofile_name=calcfile_name)
-    ci = Calc(
-        calc_file=calcfile_name, base_mode=base_mode, dry_atm=dry_atm, wet_atm=wet_atm
-    )
+    ci = Calc(calc_file=calcfile_name, base_mode=base_mode, dry_atm=dry_atm, wet_atm=wet_atm)
     ci.run_driver()
     del ci.calc_file
     c0 = get_mod_state(calc)
@@ -175,11 +158,7 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
     # TODO -- Fix so these compare properly
     # assert compare_dicts(c0, c1)
 
-    quantities = ["delay", "delay_rate", "partials", "times"]
-    atols = {
-        "delay": 0.01 * un.ns,
-        "delay_rate": 1e-11 * un.s * un.Hz,
-    }
+    atols = {"delay": 0.01 * un.ns, "delay_rate": 1e-11 * un.s * un.Hz}
 
     assert_quantity_allclose(quants0["delay"], quants1["delay"], atol=0.01 * un.ns)
     assert_quantity_allclose(
@@ -191,9 +170,7 @@ def test_file_vs_kwds(atmo, params_vlbi, tmpdir):
             atol = atols["delay_rate"] / un.rad
         else:
             atol = atols["delay"] / un.rad
-        assert_quantity_allclose(
-            quants0["partials"][nm], quants1["partials"][nm], atol=atol
-        )
+        assert_quantity_allclose(quants0["partials"][nm], quants1["partials"][nm], atol=atol)
 
     assert np.all(quants0["times"] == quants1["times"])
 
@@ -209,12 +186,8 @@ def test_calc_props(params_vlbi):
     assert_allclose(srcs.dec.rad, psrcs.dec.rad)
 
     # Station positions
-    stats = [
-        ac.EarthLocation.from_geocentric(*c, unit="m") for c in ci.station_coords.T
-    ]
-    assert all(
-        [stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"])]
-    )
+    stats = [ac.EarthLocation.from_geocentric(*c, unit="m") for c in ci.station_coords.T]
+    assert all(stats[ci] == loc for ci, loc in enumerate(params_vlbi["station_coords"]))
 
 
 @pytest.mark.filterwarnings("ignore:No ocean")
@@ -227,9 +200,7 @@ def test_kwd_override(params_all, tmpdir):
     stat_locs = params_all["station_coords"][:-1]
     stat_nmes = params_all["station_names"][:-1]
 
-    ci = Calc(
-        calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes
-    )
+    ci = Calc(calc_file=calcfile_name, station_coords=stat_locs, station_names=stat_nmes)
     assert ci.station_coords.shape[1] == len(stat_locs) == 8
 
 
@@ -260,15 +231,15 @@ def test_ddr_vals(base_mode, params_vlbi):
                 ap_del = astropy_delay(srcs, tt, st_locs[si], gc)
                 ap_dlr = astropy_delay_rate(srcs, tt, st_locs[si], gc)
                 assert_quantity_allclose(ci.delay[ti, 0, si, :], ap_del, atol=5 * un.us)
-                assert_quantity_allclose(ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz)
+                assert_quantity_allclose(
+                    ap_dlr, ci.delay_rate[ti, 0, si, :], atol=1e-11 * un.s * un.Hz
+                )
         if base_mode == "baseline":
             for s1i in range(nstat):
-                for s2i in range(s1i+1, nstat):
+                for s2i in range(s1i + 1, nstat):
                     ap_del = astropy_delay(srcs, tt, st_locs[s2i], st_locs[s1i])
                     ap_dlr = astropy_delay_rate(srcs, tt, st_locs[s2i], st_locs[s1i])
-                    assert_quantity_allclose(
-                        ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us
-                    )
+                    assert_quantity_allclose(ci.delay[ti, s1i, s2i, :], ap_del, atol=5 * un.us)
                     assert_quantity_allclose(
                         ap_dlr, ci.delay_rate[ti, s1i, s2i, :], atol=1e-11 * un.s * un.Hz
                     )
@@ -303,15 +274,11 @@ def test_oc_warnings(params_all):
     #   ocean pole tide loading coefficients file
     # calc.sitcm.oc_coefs_found[1, ii] == 1 if calc.calc_input.sites[ii] found in
     #   ocean loading data file.
-    oc_bad = ci.station_names[
-        ~calc.sitcm.oc_coefs_found[1][1 : ci.nants + 1].astype(bool)
-    ]
-    optl_bad = ci.station_names[
-        ~calc.sitcm.oc_coefs_found[0][1 : ci.nants + 1].astype(bool)
-    ]
+    oc_bad = ci.station_names[~calc.sitcm.oc_coefs_found[1][1 : ci.nants + 1].astype(bool)]
+    optl_bad = ci.station_names[~calc.sitcm.oc_coefs_found[0][1 : ci.nants + 1].astype(bool)]
 
-    for l in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
-        l.sort()
+    for ll in [oc_bad0, oc_bad, optl_bad0, optl_bad]:
+        ll.sort()
 
     assert_array_equal(oc_bad0, oc_bad)
     assert_array_equal(optl_bad0, optl_bad)
@@ -321,15 +288,14 @@ def test_oc_dist_warnings(params_all):
     # Last one is assumed to be at DRAO, but given to calc as algo. Should give big offset.
     with warnings.catch_warnings(record=True) as warning_list:
         OceanFiles.check_sites(
-            site_names=params_all["station_names"],
-            site_pos=params_all["station_coords"],
+            site_names=params_all["station_names"], site_pos=params_all["station_coords"]
         )
 
     print([str(wn.message) for wn in warning_list])
     for w in (str(wn.message) for wn in warning_list):
         if "Station positions" in w:
-            assert all([st in w for st in ["VLA_E9", "ALMA"]])
-            assert all([st not in w for st in ["GBT-VLBA"]])
+            assert all(st in w for st in ["VLA_E9", "ALMA"])
+            assert all(st not in w for st in ["GBT-VLBA"])
 
 
 def test_partials_calc(params_vlbi):
@@ -365,19 +331,17 @@ def test_partials_calc(params_vlbi):
     # dtau_dra and dtau_ddec axes = (time, ant1, ant2) where ant1 is just geocenter
     atol = 1e-6 * un.s / un.rad
     assert_quantity_allclose(dtau_dra[:, 0, :], partials["dD_dRA"][:, 0, :], atol=atol)
-    assert_quantity_allclose(
-        dtau_ddec[:, 0, :], partials["dD_dDEC"][:, 0, :], atol=atol
-    )
+    assert_quantity_allclose(dtau_ddec[:, 0, :], partials["dD_dDEC"][:, 0, :], atol=atol)
 
 
 def test_errors(params_all):
-    # Correct error is raised when trying to access without running driver
     # Correct error is raised when initialized without params
+    # Correct error is raised when trying to access without running driver
     with pytest.raises(ValueError, match="If calc_file is not set"):
         Calc()
 
     with pytest.raises(ValueError, match="Need to rerun adrivr"):
-        ci = Calc(**params_all)
+        ci = Calc(**params_all, check_sites=False)
         ci.delay
 
 
@@ -420,8 +384,8 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        ci = Calc(**params_vlbi)
+        warnings.simplefilter("ignore")
+        Calc(**params_vlbi)
 
     nants = len(params_vlbi["station_coords"])
     names = params_vlbi["station_names"]
@@ -434,12 +398,8 @@ def test_coef_vals(params_vlbi):
                 calc.sitcm.sitoam[..., 1 : nants + 1],  # Vertical amplitude [m]
                 calc.sitcm.sithoa[:, 0, 1 : nants + 1],  # horizontal amplitudes [m]
                 calc.sitcm.sithoa[:, 1, 1 : nants + 1],
-                np.degrees(
-                    calc.sitcm.sitoph[..., 1 : nants + 1]
-                ),  # Vertical phase [deg]
-                np.degrees(
-                    calc.sitcm.sithop[:, 0, 1 : nants + 1]
-                ),  # horizontal phases [deg]
+                np.degrees(calc.sitcm.sitoph[..., 1 : nants + 1]),  # Vertical phase [deg]
+                np.degrees(calc.sitcm.sithop[:, 0, 1 : nants + 1]),  # horizontal phases [deg]
                 np.degrees(calc.sitcm.sithop[:, 1, 1 : nants + 1]),
             )
         ),
@@ -463,15 +423,13 @@ def test_coef_vals(params_vlbi):
 
 @pytest.mark.parametrize("kv", make_params(nsrcs=30).items())
 def test_change_quantities(params_vlbi, kv):
-    ci = Calc(**params_vlbi)
+    ci = Calc(**params_vlbi, check_sites=False)
     ci.run_driver()
     key, val = kv
     setattr(ci, key, val)
     assert ci._rerun
 
-    with pytest.raises(
-        ValueError, match="Need to rerun adrivr before accessing data. "
-    ):
+    with pytest.raises(ValueError, match="Need to rerun adrivr before accessing data. "):
         print(ci.delay)
 
     if key == "source_coords":
@@ -479,13 +437,14 @@ def test_change_quantities(params_vlbi, kv):
         assert ci.nsrcs == 30
         assert ci.delay.shape[-1] == 30
 
+
 def test_epochs():
     # Check that scan covers requested time
     pars = make_params(nsrcs=10, duration_min=60)
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
+        warnings.simplefilter("ignore")
         ci = Calc(**pars)
     ci.run_driver()
     t0 = pars["start_time"]
-    t1 = t0 + TimeDelta(3600, format='sec')
+    t1 = t0 + TimeDelta(3600, format="sec")
     assert ci.times.min() <= t0 and t1 <= ci.times.max()

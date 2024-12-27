@@ -20,15 +20,15 @@ target_link_libraries(fortranobject PUBLIC Python::NumPy)
 target_include_directories(fortranobject PUBLIC "${F2PY_INCLUDE_DIR}")
 set_property(TARGET fortranobject PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-set(fortran_src_file "${CMAKE_BINARY_DIR}/calc11/src/calc11.f90")
+set(fortran_src_file "${CMAKE_BINARY_DIR}/src/calc11/calc11.f90")
 
 # Generate param11.in file in cmake build directory
-file(READ ${CMAKE_SOURCE_DIR}/calc11/src/param11.i.in CONTENTS)
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/calc11/src/param11.i ${CONTENTS})
+file(READ ${CMAKE_SOURCE_DIR}/src/calc11/param11.i.in CONTENTS)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/src/calc11/param11.i ${CONTENTS})
 
-add_subdirectory(calc11)
+add_subdirectory(src)
 
-file(GLOB includes ${CMAKE_SOURCE_DIR}"/calc11/src/*.i")
+file(GLOB includes ${CMAKE_SOURCE_DIR}"/src/calc11/*.i")
 
 add_custom_command(
   OUTPUT calc11module.c calc11-f2pywrappers.f calc11-f2pywrappers2.f90
@@ -38,7 +38,7 @@ add_custom_command(
           "${fortran_src_file}" -m calc11 --lower
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
- 
+
 python_add_library(
        calc11
        MODULE
@@ -50,7 +50,7 @@ python_add_library(
 target_link_libraries(calc11 PRIVATE fortranobject)
 
 if ("${SKBUILD_STATE}" STREQUAL "editable")
-        set(build_dest "${CMAKE_SOURCE_DIR}/pycalc11")
+        set(build_dest "${CMAKE_SOURCE_DIR}/src/pycalc11")
 else()
         set(build_dest ${SKBUILD_PROJECT_NAME})
 endif()

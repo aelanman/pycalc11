@@ -1,0 +1,107 @@
+name: Tests
+
+on:
+  schedule:
+    - cron: "0 17 15 * *"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linter:
+    name: Linter
+    runs-on: ubuntu-latest
+    env:
+      ENV_NAME: linting
+      PYTHON: 3.8
+    steps:
+      - uses: actions/checkout@v3
+        with:
+         fetch-depth: 1
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Setup Environment
+        run: |
+          pip install pre-commit
+      - name: Linting
+        run: |
+          pre-commit install
+          pre-commit run -a
+  datacache:
+    name: Cache Data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Get current date
+        id: date
+        shell: bash
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: check-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/astropy_cache.zip
+          key: data_cache-${{ steps.date.outputs.date }}
+      - if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+        name: Download data
+        run: |
+          pip install astropy
+          python ./ci/cache_data.py save
+      - if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+        name: cache data
+        uses: actions/cache@v4
+        with:
+          path: ~/astropy_cache.zip
+          key: data_cache-${{ steps.date.outputs.date }}
+
+  tests:
+    env:
+      ENV_NAME: tests
+      PYTHON: ${{ matrix.python-version }}
+      OS: ${{ matrix.os }}
+    needs: [datacache, linter]
+    name: Testing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Get current date
+        id: date
+        shell: bash
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: load-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/astropy_cache.zip
+          key: data_cache-${{ steps.date.outputs.date }}
+      - name: load data
+        run: |
+          pip install astropy
+          python ./ci/cache_data.py load
+      - uses: fortran-lang/setup-fortran@v1
+        id: setup-fortran
+        with:
+          compiler: gcc
+          version: 13
+      - name: Install
+        run: |
+          pip install .[dev]
+      - name: Run Tests
+        run: |
+          python -m pytest
