@@ -1,4 +1,4 @@
-exclude: '(^pycalc11/data/|^calc11/.*|README.rst|ci/.*)'
+exclude: '(^src/pycalc11/data/|^src/calc11/.*|README.rst|ci/.*)'
 
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks

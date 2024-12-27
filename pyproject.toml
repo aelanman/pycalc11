@@ -45,8 +45,9 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 exclude = [
-    "src/pycalc11/data/**",
-    "src/calc11/**",
+    "src/pycalc11/data",
+    "src/calc11",
+    "ci",
 ]
 force-exclude=true
 
