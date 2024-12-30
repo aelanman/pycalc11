@@ -228,3 +228,37 @@ class CalcReader:
         return self.delay(ant2, time, src_num, scan=scan) - self.delay(
             ant1, time, src_num, scan=scan
         )
+
+    def uvw(self, ant_num, time, src_num, scan=0):
+        """
+        UVW coordinates
+
+        Parameters
+        ----------
+        ant_num: int
+            Index of antenna.
+        time: astropy.time.Time
+            Time of observation.
+        src_num: int
+            Source number.
+        scan: int
+            Scan index number (default 0)
+
+        Returns
+        -------
+        list
+            U, V, W values in meters
+        """
+        if self.poly_ranges is None:
+            raise ValueError("Need to read a file first.")
+
+        polyind, key = self._get_polykey(time, ant_num, src_num, scan)
+        uvw = []
+        polystart = self.poly_ranges[polyind].start
+        for comp in ["U", "V", "W"]:
+            poly = self.params[key + f"_{comp}_(m)"]
+            # Evaluate polynomial:
+            dt = (time - polystart).sec
+            uvw.append(np.polyval(poly, dt))
+
+        return uvw

@@ -2,6 +2,7 @@
 
 import numpy as np
 import warnings
+from functools import partial
 from astropy.time import Time, TimeDelta
 from astropy import coordinates as ac
 from astropy.constants import R_earth
@@ -24,7 +25,7 @@ class Calc:
             * Add atmosphere contributions or not
             * Baseline or geocenter mode
             * uvw mode
-            * Near or far field
+            * Near or far field  [currently only far-field supported]
     When the state changes, the driver subroutine `adrvr` needs to be rerun before
     accessing results.
 
@@ -46,8 +47,8 @@ class Calc:
         Default 'geocenter'
     uvw_mode: str
         CALC uvw calculation mode
-        exact [include partials], uncorr, approx, noatmo [exact with no atmo]
-        Default 'exact.
+        exact [include partials, and atmosphere], uncorr, approx, noatmo [exact with no atmo]
+        Default exact.
     dry_atm: bool
         Include dry troposphere contribution to delay.
         Default True
@@ -62,6 +63,10 @@ class Calc:
         Also check that positions entered are consistent with positions in the OPTL and OC datasets.
         If checks fails, issues a warning.
         Default True
+    debug_flags: dict
+        Sets specific functions to print debug information.
+        See DebugFlags class for list of flags
+        Default None
 
     Notes
     -----
@@ -104,6 +109,7 @@ class Calc:
         calc_file=None,
         d_interval=24,
         check_sites=True,
+        debug_flags=None,
     ):
         # Setting defaults
         self._reset()  # Clear if there's another instance.
@@ -127,6 +133,10 @@ class Calc:
         calc.contrl.epoch2m = (
             120.0001 / calc.contrl.d_interval
         ) + 1  # Number of steps in 2 min epoch
+
+        # Set debug flags, if any
+        # Note -- some can be quite noisy. TODO Clean up Fortran side of debugging info
+        self.debug_flags = DebugFlags(debug_flags)
 
         # Check for required parameters
         kwargs = {
@@ -212,7 +222,8 @@ class Calc:
                     calc.outputs.ubase_f[:-1, :, :, 1:],
                     calc.outputs.vbase_f[:-1, :, :, 1:],
                     calc.outputs.wbase_f[:-1, :, :, 1:],
-                ], axis=-1,
+                ],
+                axis=-1,
             )
 
         self._rerun = False
@@ -367,7 +378,7 @@ class Calc:
 
     @property
     def dry_atm(self):
-        """Include dry troposphere."""
+        """Include dry troposphere in delay."""
         return calc.contrl.atmdr[()] == b"Add-dry   "
 
     @dry_atm.setter
@@ -379,7 +390,7 @@ class Calc:
 
     @property
     def wet_atm(self):
-        """Include wet troposphere."""
+        """Include wet troposphere in delay."""
         return calc.contrl.atmwt[()] == b"Add-wet   "
 
     @wet_atm.setter
@@ -612,31 +623,29 @@ class Calc:
         Axes: (time, ant1, ant2, src, component)
               component 0: u, 1: v, 2: w
         """
-        if self.base_mode == 'baseline':
+        if self.base_mode == "baseline":
             vals = self._uvw[:, 1:, :, :, :]
         else:
             vals = self._uvw
 
-        return un.Quantity(vals, unit='m', copy=False)
+        return un.Quantity(vals, unit="m", copy=False)
 
     def uvw_interp(self, t_0):
         """
         Interpolate UVW coordinates.
 
         Parameters
-        -----------------
+        ----------
         t_0 : astropy.time.Time
             Absolute time(s) to interpolate to.
 
         Returns
-        -----------
+        -------
         astropy.Quantity
             uvw coordinates evaluated at t_0
             axes (time, ant1, ant2, src, component)
         """
-        spl = Akima1DInterpolator(
-            (self.times - self.times[0]).sec, self.uvw.to_value('km'), axis=0
-        )
+        spl = Akima1DInterpolator((self.times - self.times[0]).sec, self.uvw.to_value("km"), axis=0)
         return spl((t_0 - self.times[0]).sec) * un.km
 
 
@@ -800,6 +809,61 @@ class OceanFiles:
 
 # Init an OceanFiles
 OceanFiles()
+
+class DebugFlags:
+    """
+    Interface to the debugging flags in calc.
+    """
+    # TODO -- add unit test of setters/getters
+    _flag_info = {
+        "katid" : "the atime utility routine debug output flag.",
+        "katmd" : "the atmosphere module debug output flag.",
+        "kaxod" : "the axis offset module debug output flag.",
+        "kctid" : "the ctimg utility routine debug output flag.",
+        "kdiud" : "the diurnal spin utility routine debug output flag.",
+        "ketdd" : "the etdg debug output flag.",
+        "kthed" : "the theory routine debug control flag.",
+        "km20d" : "the m2000 utility routine debug output flag.",
+        "kmatd" : "the matrix utility routine debug output flag.",
+        "knutd" : "the nutation module debug output flag.",
+        "koced" : "the ocean loading module debug output flag",
+        "kpepd" : "the pep utility routine debug output flag.",
+        "kuvmd" : "the uv module debug output flag.",
+        "kptdd" : "the pole tide module debug output flag.",
+        "krosd" : "the rosit utility routine debug output flag.",
+        "ksitd" : "the site module debug output flag.",
+        "ksted" : "the sitcr utility routine debug output flag.",
+        "kstrd" : "the star module debug output flag.",
+        "kut1d" : "the ut1 module debug output flag.",
+        "kvecd" : "the vector utility routine debug output flag.",
+        "kwobd" : "the wobble module debug output flag.",
+    }
+
+    def __init__(self, flags=None):
+        cls = self.__class__
+        def fget(key, inst):
+            return getattr(calc.con, key).item()
+        def fset(key, inst, val):
+            if not isinstance(val, int):
+                raise ValueError(f"Flag {key} must be set to type int")
+            return setattr(calc.con, key, val)
+        def fdel(key, inst, val):
+            setattr(calc.con, key, 0)
+        for key, info in cls._flag_info.items():
+            setattr(cls, key, property(
+                fget=partial(fget, key),
+                fset=partial(fset, key),
+                fdel=partial(fdel, key),
+                doc=info)
+            )
+
+        if flags is not None:
+            for k,v in flags.items():
+                setattr(self, k, v)
+
+    def __str__(self):
+        outstr = ""
+        return "\n".join(f"{k}={getattr(calc.con, k).item()} \t {v}" for k,v in self._flag_info.items())
 
 
 def is_initialized(cb, item):
