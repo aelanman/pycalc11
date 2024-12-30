@@ -231,7 +231,7 @@ class CalcReader:
 
     def uvw(self, ant_num, time, src_num, scan=0):
         """
-        UVW coordinates
+        UVW coordinates.
 
         Parameters
         ----------

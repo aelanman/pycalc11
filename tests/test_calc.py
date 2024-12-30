@@ -87,8 +87,7 @@ def make_params(nsrcs=305, duration_min=10):
         unit="rad",
         frame="altaz",
         obstime=time,
-        #location=gbo_loc,
-        location=site_locs[-3], #alma   #gbo_loc,
+        location=gbo_loc,
     )
     srcs = srcs.transform_to(ac.ICRS())
 
@@ -389,7 +388,8 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
 
     # Tolerance of picoseconds
     assert_allclose(delays, im_dels, atol=1e-6)
-    assert_allclose(uvws, im_uvws, atol=1e-4)   # 0.1 mm
+    assert_allclose(uvws, im_uvws, atol=1e-4)  # 0.1 mm
+
 
 def test_coef_vals(params_vlbi):
     # Check that coefficient values found by OceanFiles match those loaded by calc.
@@ -460,31 +460,50 @@ def test_epochs():
     assert ci.times.min() <= t0 and t1 <= ci.times.max()
 
 
-@pytest.mark.parametrize("uvw_mode, tol", [('approx', 5*un.cm), ('uncorr', 5*un.m), ('exact', 5*un.m), ('noatmo', 5*un.m)])
-@pytest.mark.parametrize("cent", [ac.EarthLocation.from_geodetic(lat=0, lon=0), ac.EarthLocation.of_site("CHIME"), ac.EarthLocation.from_geodetic(lat=85, lon=0)])
+@pytest.mark.parametrize(
+    "uvw_mode, tol",
+    [("approx", 5 * un.cm), ("uncorr", 5 * un.m), ("exact", 5 * un.m), ("noatmo", 5 * un.m)],
+)
+@pytest.mark.parametrize(
+    "cent",
+    [
+        ac.EarthLocation.from_geodetic(lat=0, lon=0),
+        ac.EarthLocation.of_site("CHIME"),
+        ac.EarthLocation.from_geodetic(lat=85, lon=0),
+    ],
+)
 def test_uvw(uvw_mode, tol, cent):
     pars = {}
     pars["duration_min"] = 60
-    pars['uvw_mode'] = uvw_mode
+    pars["uvw_mode"] = uvw_mode
     t0 = Time.now()
 
     ## These locations are chosen to be 3km east and north in the tangent plane at "cent".
     bllen = 3e3
-    north_sc = ac.SkyCoord(bllen, 0, 0, frame=ac.AltAz(location=cent), representation_type='cartesian', unit='m')
+    north_sc = ac.SkyCoord(
+        bllen, 0, 0, frame=ac.AltAz(location=cent), representation_type="cartesian", unit="m"
+    )
     north_loc = north_sc.transform_to(ac.ITRS).cartesian.xyz + cent.itrs.cartesian.xyz
-    east_sc = ac.SkyCoord(0, bllen, 0, frame=ac.AltAz(location=cent), representation_type='cartesian', unit='m')
+    east_sc = ac.SkyCoord(
+        0, bllen, 0, frame=ac.AltAz(location=cent), representation_type="cartesian", unit="m"
+    )
     east_loc = east_sc.transform_to(ac.ITRS).cartesian.xyz + cent.itrs.cartesian.xyz
 
     north = ac.EarthLocation.from_geocentric(*north_loc)
     east = ac.EarthLocation.from_geocentric(*east_loc)
 
     srcs = ac.SkyCoord(
-        alt=[90, 67.5, 45, 22.5, 5], az=[0]*5, unit='deg', frame='altaz',
-        location=cent, obstime=t0).transform_to(ac.ICRS())
-    pars['station_names'] = ['east', 'north', 'cent']
-    pars['station_coords'] = [east, north, cent]
-    pars['source_coords'] = srcs
-    pars['start_time'] = t0
+        alt=[90, 67.5, 45, 22.5, 5],
+        az=[0] * 5,
+        unit="deg",
+        frame="altaz",
+        location=cent,
+        obstime=t0,
+    ).transform_to(ac.ICRS())
+    pars["station_names"] = ["east", "north", "cent"]
+    pars["station_coords"] = [east, north, cent]
+    pars["source_coords"] = srcs
+    pars["start_time"] = t0
 
     # Expectation:
     #   - For the (north -- center) baseline, the baseline angle with the source is changing.
@@ -515,7 +534,7 @@ def test_uvw(uvw_mode, tol, cent):
     uvw_ap = uvw_ap[:, 0, ...]
     uvw_py = ci.uvw[:, 0, ...]  # noqa: F841
 
-    bls_ap = uvw_ap[:, :2] - uvw_ap[:, [2]]     # Relative to cent
+    bls_ap = uvw_ap[:, :2] - uvw_ap[:, [2]]  # Relative to cent
     bls_py = uvw_py[:, :2] - uvw_py[:, [2]]
-    print(uvw_mode, cent.lat, np.max(np.abs(bls_ap - bls_py).to_value('cm')))
+    print(uvw_mode, cent.lat, np.max(np.abs(bls_ap - bls_py).to_value("cm")))
     assert_quantity_allclose(bls_ap, bls_py, atol=tol)

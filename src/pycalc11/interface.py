@@ -810,60 +810,69 @@ class OceanFiles:
 # Init an OceanFiles
 OceanFiles()
 
+
 class DebugFlags:
-    """
-    Interface to the debugging flags in calc.
-    """
+    """Interface to the debugging flags in calc."""
+
     # TODO -- add unit test of setters/getters
     _flag_info = {
-        "katid" : "the atime utility routine debug output flag.",
-        "katmd" : "the atmosphere module debug output flag.",
-        "kaxod" : "the axis offset module debug output flag.",
-        "kctid" : "the ctimg utility routine debug output flag.",
-        "kdiud" : "the diurnal spin utility routine debug output flag.",
-        "ketdd" : "the etdg debug output flag.",
-        "kthed" : "the theory routine debug control flag.",
-        "km20d" : "the m2000 utility routine debug output flag.",
-        "kmatd" : "the matrix utility routine debug output flag.",
-        "knutd" : "the nutation module debug output flag.",
-        "koced" : "the ocean loading module debug output flag",
-        "kpepd" : "the pep utility routine debug output flag.",
-        "kuvmd" : "the uv module debug output flag.",
-        "kptdd" : "the pole tide module debug output flag.",
-        "krosd" : "the rosit utility routine debug output flag.",
-        "ksitd" : "the site module debug output flag.",
-        "ksted" : "the sitcr utility routine debug output flag.",
-        "kstrd" : "the star module debug output flag.",
-        "kut1d" : "the ut1 module debug output flag.",
-        "kvecd" : "the vector utility routine debug output flag.",
-        "kwobd" : "the wobble module debug output flag.",
+        "katid": "the atime utility routine debug output flag.",
+        "katmd": "the atmosphere module debug output flag.",
+        "kaxod": "the axis offset module debug output flag.",
+        "kctid": "the ctimg utility routine debug output flag.",
+        "kdiud": "the diurnal spin utility routine debug output flag.",
+        "ketdd": "the etdg debug output flag.",
+        "kthed": "the theory routine debug control flag.",
+        "km20d": "the m2000 utility routine debug output flag.",
+        "kmatd": "the matrix utility routine debug output flag.",
+        "knutd": "the nutation module debug output flag.",
+        "koced": "the ocean loading module debug output flag",
+        "kpepd": "the pep utility routine debug output flag.",
+        "kuvmd": "the uv module debug output flag.",
+        "kptdd": "the pole tide module debug output flag.",
+        "krosd": "the rosit utility routine debug output flag.",
+        "ksitd": "the site module debug output flag.",
+        "ksted": "the sitcr utility routine debug output flag.",
+        "kstrd": "the star module debug output flag.",
+        "kut1d": "the ut1 module debug output flag.",
+        "kvecd": "the vector utility routine debug output flag.",
+        "kwobd": "the wobble module debug output flag.",
     }
 
     def __init__(self, flags=None):
         cls = self.__class__
+
         def fget(key, inst):
             return getattr(calc.con, key).item()
+
         def fset(key, inst, val):
             if not isinstance(val, int):
                 raise ValueError(f"Flag {key} must be set to type int")
             return setattr(calc.con, key, val)
+
         def fdel(key, inst, val):
             setattr(calc.con, key, 0)
+
         for key, info in cls._flag_info.items():
-            setattr(cls, key, property(
-                fget=partial(fget, key),
-                fset=partial(fset, key),
-                fdel=partial(fdel, key),
-                doc=info)
+            setattr(
+                cls,
+                key,
+                property(
+                    fget=partial(fget, key),
+                    fset=partial(fset, key),
+                    fdel=partial(fdel, key),
+                    doc=info,
+                ),
             )
 
         if flags is not None:
-            for k,v in flags.items():
+            for k, v in flags.items():
                 setattr(self, k, v)
 
     def __str__(self):
-        outstr = ""
-        return "\n".join(f"{k}={getattr(calc.con, k).item()} \t {v}" for k,v in self._flag_info.items())
+        return "\n".join(
+            f"{k}={getattr(calc.con, k).item()} \t {v}" for k, v in self._flag_info.items()
+        )
 
 
 def is_initialized(cb, item):
