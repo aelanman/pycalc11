@@ -473,6 +473,28 @@ def test_epochs():
     ],
 )
 def test_uvw(uvw_mode, tol, cent):
+    # Compare UVW values to approximate calculation using astropy
+    # Also looping through uvw calculation modes with different tolerances
+    #    uncorr = basic geometry, projecting baseline into phase center direction
+    #    approx = Closest to astropy -- projecting baseline, and including stellar aberration
+    #    exact = Taking numerical derivatives of delay, including atmospheric corrections
+    #    noatmo = Same as exact, but without atmospheric corrections
+    # The setup is:
+    #    - A center position, chosen to be on the equator, at CHIME, and at the north pole
+    #    - An antenna 3 km East of the center position, in the tangent plane
+    #    - An antenna 3 km North of the center position, in the tangent plane
+    #    - Phase centers from the zenith at center, stepping down in altitude along the
+    #    north direction
+    #    - Comparing baselines between north/east and the center position.
+    # Expectation:
+    #   - For the (north -- center) baseline, the baseline angle with the source is changing.
+    #       U should remain roughly constant and small, while V increases
+    #   - For the (east -- center) baseline, the baseline angle is constant as source moves
+    #       V \approx 0, and U \approx bllen
+
+    # A remaining question -- Is 5 m a reasonable scale for the effects of stellar aberration on
+    # on these 3 km baselines?
+
     pars = {}
     pars["duration_min"] = 60
     pars["uvw_mode"] = uvw_mode
@@ -504,12 +526,6 @@ def test_uvw(uvw_mode, tol, cent):
     pars["station_coords"] = [east, north, cent]
     pars["source_coords"] = srcs
     pars["start_time"] = t0
-
-    # Expectation:
-    #   - For the (north -- center) baseline, the baseline angle with the source is changing.
-    #       U should remain roughly constant and small, while V increases
-    #   - For the (east -- center) baseline, the baseline angle is constant as source moves
-    #       V \approx 0, and U \approx bllen
 
     ci = Calc(**pars, dry_atm=False, wet_atm=False, check_sites=False)
     ci.run_driver()
