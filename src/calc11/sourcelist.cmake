@@ -47,6 +47,6 @@ set(includes ${includes}
   d_input.i
   get2s.i
   input11.i
-  param11.i
+  #  param11.i
   put2s.i
 )

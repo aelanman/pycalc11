@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools>=61.2", "wheel", "scikit-build", "cmake>=3.12", "numpy>=1.21,<1.24", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["wheel", "scikit-build-core", "numpy>=1.21,!=2.0.*", "setuptools_scm[toml]>=6.2"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "pycalc11"
-#version = "0.1"
 dynamic = ["version"]
 authors = [
     {name = "Marten H. van Kerkwijk", email = "mhvk@astro.utoronto.ca"},
@@ -15,37 +14,84 @@ license = {text = "MIT"}
 description = "Python wrappers for CALC11"
 urls = {Homepage = "https://github.com/aelanman/pycalc11"}
 requires-python = ">=3.8"
-dependencies = ["numpy>=1.21,<1.24", "astropy>=3.2"]
+dependencies = ["numpy>=1.21", "astropy>=3.2", "scipy"]
+
+[project.optional-dependencies]
+dev = ["pytest", "flake8", "pycodestyle", "jplephem"]
 
 [tool.setuptools_scm]
-
 
 [project.readme]
 file = "README.rst"
 content-type = "text/x-rst"
 
-[tool.setuptools]
-zip-safe = false
-include-package-data = true
-license-files = ["LICENSE"]
-
-[tool.setuptools.packages]
-find = {namespaces = false, where = ["."]}
+[tool.scikit-build]
+ninja.version = ">=1.10"
+cmake.version = ">=3.17.2"
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = ["pycalc11/_version.py"]
+#build-dir = "build/{wheel_tag}"
 
 [tool.pytest.ini_options]
-testpaths = ['"pycalc11/tests"']
+testpaths = ["tests"]
 
-[tool.flake8]
-ignore = """
-E226,
-W503"""
-exclude = """
-docs/conf.py,
-setup.py,
-__pycache__,build,dist,htmlcov,licenses"""
+## [tool.flake8]
+## ignore = "W503, N806, E731"
+## max-line-length = 100
+## # it's recommended to have max-complexity ~ 18
+## max-complexity = 30
+## select = B,C,E,W,T4,B9,F
 
-[tool.pycodestyle]
-exclude = """
-docs/conf.py,
-setup.py,
-__pycache__,build,dist,htmlcov,licenses"""
+[tool.ruff]
+line-length = 100
+exclude = [
+    "src/pycalc11/data",
+    "src/calc11",
+    "ci",
+]
+force-exclude=true
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "W", # pycodestyle warnings
+    "F", # Pyflakes
+    "D", # pydocstyle
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "A", # flake8-builtins
+    "C4", # flake8-comprehensions
+    "N", # pep8-naming
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "N806", # non-lowercase variable
+    "B028", # no-explicit-stacklevel for warnings
+    "SIM108", # prefer ternary opperators.
+    "SIM118", # don't use "dict.keys()" -- I prefer to keep this explicit
+    "D203", # one-blank-line-before-class.
+    "D205", # disallows two-line definition lines in docstrings
+    "D105", # requiring docstrings in magic methods
+    "UP015", # explicit file open parameters
+  #  "D212", # multi-line-summary-first-line. We put it on the second line.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "B"] # Don't require docstrings for tests; also allow "useless expressions"
+"src/pycalc11/utils.py" = ["SIM115"]    # Need to open profiler log  without context for atexit
+"src/pycalc11/interface.py" = ["N805"]  # We need to violate this for the "state_dep" decorator
+"src/pycalc11/__init__.py" = ["D", "E402"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 100
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["pycalc11"]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

@@ -1,3 +1,4 @@
+"""Utility functions for testing and line profiling."""
 
 import numpy as np
 from datetime import datetime
@@ -16,10 +17,11 @@ OMEGA_EARTH_ITRS = np.array([0, 0, 1]) * OMEGA_EARTH
 
 iers_tab = iers.earth_orientation_table.get()
 
+
 def get_leap_seconds(tobj):
-    # Find current TAI - UTC for a given time.
+    """Find current TAI - UTC for a given time."""
     lsec_table = iers.LeapSeconds.auto_open().as_array()
-    for ti, (yr, mo, tai_utc) in enumerate(lsec_table):
+    for ti, (yr, mo, _) in enumerate(lsec_table):
         dtobj = datetime(yr, mo, 1, 0, 0, 0)
         if dtobj > tobj.datetime:
             ti -= 1
@@ -34,7 +36,7 @@ def get_leap_seconds(tobj):
 
 def astropy_delay(src, time, ant0, ant1):
     """
-    Basic calculation of geometric delay using astropy in ITRS.
+    Calculate geometric delay using astropy in ITRS.
 
     Parameters
     ----------
@@ -52,7 +54,7 @@ def astropy_delay(src, time, ant0, ant1):
     astropy.Quantity:
         Geometric delay in microseconds
     """
-    with ac.solar_system_ephemeris.set('jpl'):
+    with ac.solar_system_ephemeris.set("jpl"):
         geo_src = src.transform_to(ac.ITRS(obstime=time))
         svec = geo_src.cartesian.xyz
         itrs0 = ant0.get_itrs(time)
@@ -64,12 +66,12 @@ def astropy_delay(src, time, ant0, ant1):
     dx = p1vec - p0vec
     delay0 = np.dot(dx, svec) / speed_of_light
 
-    return delay0.to('us')
+    return delay0.to("us")
 
 
 def astropy_delay_rate(src, time, ant0, ant1):
     """
-    Basic calculation of geometric delay rate using astropy in ITRS.
+    Calculate geometric delay rate using astropy in ITRS.
 
     Parameters
     ----------
@@ -87,7 +89,7 @@ def astropy_delay_rate(src, time, ant0, ant1):
     astropy.Quantity:
         Geometric delay rate in us Hz
     """
-    with ac.solar_system_ephemeris.set('jpl'):
+    with ac.solar_system_ephemeris.set("jpl"):
         geo_src = src.transform_to(ac.ITRS(obstime=time))
         svec = geo_src.cartesian.xyz
         itrs0 = ant0.get_itrs(time)
@@ -102,7 +104,10 @@ def astropy_delay_rate(src, time, ant0, ant1):
 
     return dr0.to("us Hz")
 
+
 prof = None
+
+
 def do_profiling(func_list=None, time=True, memory=False):
     """
     Run time or memory profiling on module functions.
@@ -124,7 +129,7 @@ def do_profiling(func_list=None, time=True, memory=False):
     global prof
 
     if func_list is None:
-        func_list = ['run_driver', 'set_stations', 'set_sources', 'alloc_out_arrays', 'check_sites']
+        func_list = ["run_driver", "set_stations", "set_sources", "alloc_out_arrays", "check_sites"]
 
     if memory and time:
         warnings.warn("Cannot run memory and time profilers at the same time. Skipping profiling.")
@@ -132,12 +137,14 @@ def do_profiling(func_list=None, time=True, memory=False):
 
     if time:
         from line_profiler import LineProfiler
+
         prof = LineProfiler()
         printfunc = prof.print_stats
         ofname = "time_profile.out"
 
     if memory:
         from memory_profiler import LineProfiler, show_results
+
         prof = LineProfiler()
         printfunc = partial(show_results, prof)
         ofname = "memory_profile.out"
@@ -150,17 +157,15 @@ def do_profiling(func_list=None, time=True, memory=False):
 
     # Add module functions to profiler.
     for mod_it in _pycalc11.__dict__.values():
-        if isfunction(mod_it):
-            if mod_it.__name__ in func_list:
-                prof.add_function(mod_it)
+        if isfunction(mod_it) and mod_it.__name__ in func_list:
+            prof.add_function(mod_it)
         if isclass(mod_it):
             for item in mod_it.__dict__.values():
-                if isfunction(item):
-                    if item.__name__ in func_list:
-                        prof.add_function(item)
+                if isfunction(item) and item.__name__ in func_list:
+                    prof.add_function(item)
 
     # Write out profiling report to file.
-    ofile = open(ofname, 'w')
+    ofile = open(ofname, "w")
     atexit.register(ofile.close)
     atexit.register(printfunc, stream=ofile)
     prof.enable_by_count()
