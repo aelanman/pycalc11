@@ -28,12 +28,6 @@ Install directly from the repository with pip::
 
     pip install git+https://github.com/aelanman/pycalc11.git
 
-Note that, due to recent changes in setuptools, the above might not work directly. To sidestep building a wheel you can try:
-    git clone https://github.com/aelanman/pycalc11.git
-    cd pycalc11
-    python setup.py build
-    python setup.py install
-
 The source code for CALC is in the repository and will be built and added as an
 extension to the pycalc11 module.
 
