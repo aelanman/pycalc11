@@ -112,6 +112,7 @@ def make_calc(
     # ----------------------------
     # CALCODE = calibration code, typically A,B,C for calibrators,
     #           G for a gated pulsar, or blank for normal target
+    # https://safe.nrao.edu/wiki/bin/view/EVLA/KeyToCalcodes
     # https://www.atnf.csiro.au/vlbi/dokuwiki/lib/exe/fetch.php/difx/difxuserguide.pdf
     lines.append(f"NUM SOURCES: {len(source_coords):d}")
     for si, coord in enumerate(source_coords):

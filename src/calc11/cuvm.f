@@ -18,6 +18,7 @@
 !                     of (U,V) coordinates. (Logic reversed 2001.01.12)
 !                      = 0 ==> Switched ON. (default)
 !                      = 1 ==> Switched OFF
+!          2. KUVMD - UV module debug output flag 
 !
       INCLUDE 'cphys11.i'
 !        VARIABLES 'FROM':
@@ -76,6 +77,7 @@
 !
 !       UVG PROGRAM STRUCTURE
 !
+      IF (KUVMD .eq. 1) write(6, *) "Calling UVG_un"
       IF (KASTC .ne. 0) Go to 800
 !
 !  Set frequency to 1 MHz for correlators.
@@ -147,6 +149,7 @@
 !                     of (U,V) coordinates. (Logic reversed 2001.01.12)
 !                      = 0 ==> Switched ON. (default)
 !                      = 1 ==> Switched OFF
+!          2. KUVMD - UV module debug output flag 
 !
       INCLUDE 'cphys11.i'
 !        VARIABLES 'FROM':
@@ -207,6 +210,7 @@
 !
 !     IF (KASTC .ne. 0) Go to 800
 !
+      IF (KUVMD .eq. 1) write(6, *) "Calling UVG_ab"
 !  Set frequency to 1 MHz for correlators.
       If (Calc_user .eq. 'C') REF_FREQ = 1.D6
       If (C_mode .eq. 'difx  ') REF_FREQ = 1.D6
