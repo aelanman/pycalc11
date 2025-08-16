@@ -1,5 +1,5 @@
 """
-Cache DE421 kernel data and
+Cache DE421 kernel data
 """
 
 from astropy.utils.data import (
