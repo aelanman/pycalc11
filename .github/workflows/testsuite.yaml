@@ -101,7 +101,7 @@ jobs:
           compiler: gcc
           version: 14
       - name: Reinstall gcc if macos
-        if: runner.os == 'macOS':
+        if: runner.os == 'macOS'
         run: |
           brew reinstall gcc@14
       - name: Install
