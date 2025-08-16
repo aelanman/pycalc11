@@ -1,6 +1,7 @@
 name: Tests
 
 on:
+  push:
   schedule:
     - cron: "0 17 15 * *"
   pull_request:
