@@ -554,3 +554,53 @@ def test_uvw(uvw_mode, tol, cent):
     bls_py = uvw_py[:, :2] - uvw_py[:, [2]]
     print(uvw_mode, cent.lat, np.max(np.abs(bls_ap - bls_py).to_value("cm")))
     assert_quantity_allclose(bls_ap, bls_py, atol=tol)
+
+
+# -----------------------------------
+# External ephemeris tests
+# -----------------------------------
+
+
+def _make_simple_calc(**extra_kwargs):
+    """Helper to create a Calc instance with a small, fast configuration."""
+    time = Time("2020-01-01T00:00:00", scale="utc")
+    locs = [
+        ac.EarthLocation.from_geodetic(lon=-118.0, lat=34.0, height=100),
+        ac.EarthLocation.from_geodetic(lon=-80.0, lat=26.0, height=50),
+    ]
+    srcs = ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs")
+    kwargs = dict(
+        station_names=["STA1", "STA2"],
+        station_coords=locs,
+        source_coords=srcs,
+        start_time=time,
+        duration_min=4,
+        base_mode="geocenter",
+        dry_atm=False,
+        wet_atm=False,
+        check_sites=False,
+    )
+    kwargs.update(extra_kwargs)
+    ci = Calc(**kwargs)
+    ci.run_driver()
+    return ci
+
+
+def test_jplephem_de421_matches_fortran():
+    """DE421 via jplephem should match the Fortran binary reader to ~10 ps."""
+    c_fortran = _make_simple_calc()
+    c_jplephem = _make_simple_calc(ephemeris="de421")
+
+    diff = np.abs(c_fortran.delay.to_value("s") - c_jplephem.delay.to_value("s"))
+    # Allow up to 10 ps difference (from TDB computation differences)
+    assert np.all(diff < 10e-12), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
+
+
+def test_de440s_close_to_de421():
+    """DE440s and DE421 should agree to within ~1 ns for a modern epoch."""
+    c_de421 = _make_simple_calc(ephemeris="de421")
+    c_de440s = _make_simple_calc(ephemeris="de440s")
+
+    diff = np.abs(c_de421.delay.to_value("s") - c_de440s.delay.to_value("s"))
+    # Ephemeris versions differ by tens of ps; allow up to 1 ns
+    assert np.all(diff < 1e-9), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
