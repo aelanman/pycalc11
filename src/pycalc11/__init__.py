@@ -7,8 +7,8 @@ from . import calc11
 from . import runner
 
 
-# Get JPL ephemeris data
-de421_url = f"https://github.com/difx/difx/raw/refs/heads/main/applications/difxcalc11/data/DE421_{sys.byteorder}_Endian"
+# Get JPL ephemeris data (DE421 binary for the default Fortran path)
+de421_url = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
 de421_path = download_file(de421_url, cache=True)
 calc11.datafiles.jpl_de421 = de421_path.ljust(128)
 
@@ -24,6 +24,40 @@ calc11.datafiles.oc_file = _format("ocean_load.coef")
 calc11.datafiles.optl_file = _format("ocean_pole_tide.coef")
 calc11.datafiles.dfleap = _format("ut1ls.dat")
 
+
+# Known SPK ephemeris URLs from NAIF/JPL
+_SPK_URLS = {
+    "de421": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/a_old_versions/de421.bsp",
+    "de430": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de430.bsp",
+    "de440": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440.bsp",
+    "de440s": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440s.bsp",
+    "de441": "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de441.bsp",
+}
+
+
+def get_spk(name="de440s"):
+    """Download a JPL SPK ephemeris file.
+
+    Parameters
+    ----------
+    name : str
+        Ephemeris name (e.g., 'de421', 'de430', 'de440', 'de440s', 'de441').
+        The 's' variants (e.g., 'de440s') are smaller files covering a shorter
+        time span and are recommended for typical use.
+
+    Returns
+    -------
+    str
+        Path to the cached SPK file.
+    """
+    name = name.lower()
+    if name not in _SPK_URLS:
+        raise ValueError(
+            f"Unknown ephemeris '{name}'. Available: {list(_SPK_URLS.keys())}"
+        )
+    return download_file(_SPK_URLS[name], cache=True)
+
+
 from .interface import Calc
 
-__all__ = ["Calc", "DATA_PATH", "calc11", "runner"]
+__all__ = ["Calc", "DATA_PATH", "calc11", "runner", "get_spk"]

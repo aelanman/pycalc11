@@ -1,5 +1,6 @@
 """Classes to interface with compiled Fortran code."""
 
+import os
 import numpy as np
 import warnings
 from functools import partial
@@ -67,6 +68,15 @@ class Calc:
         Sets specific functions to print debug information.
         See DebugFlags class for list of flags
         Default None
+    ephemeris: str, optional
+        JPL ephemeris to use for solar system body positions. Can be:
+        - A path to an SPK (.bsp) file
+        - A name like 'de421', 'de430', 'de440', 'de440s', 'de441'
+          (will be downloaded and cached automatically)
+        When set, ephemeris positions are computed in Python via jplephem
+        instead of by the Fortran binary file reader. This allows using
+        any JPL planetary ephemeris.
+        Default None (uses the built-in Fortran DE421 binary reader).
 
     Notes
     -----
@@ -110,6 +120,7 @@ class Calc:
         d_interval=24,
         check_sites=True,
         debug_flags=None,
+        ephemeris=None,
     ):
         # Setting defaults
         self._reset()  # Clear if there's another instance.
@@ -178,6 +189,11 @@ class Calc:
         # Add geocenter station
         self._add_geocenter()
 
+        # Set up ephemeris provider
+        self._spk_kernel = None
+        if ephemeris is not None:
+            self._setup_ephemeris(ephemeris)
+
         calc.dinitl(1)
 
     def parse_calcfile(self, calcfile):
@@ -206,6 +222,11 @@ class Calc:
         self.alloc_out_arrays()
         e2m = calc.contrl.epoch2m - 1
         for ii in range(calc.calc_input.intrvls2min):
+            if self._spk_kernel is not None:
+                from .ephemeris import fill_ephem_arrays
+
+                tdb_jds = self._compute_epoch_tdb(ii)
+                fill_ephem_arrays(self._spk_kernel, tdb_jds, calc)
             calc.adrivr(1, ii + 1)
             slc = np.s_[ii * e2m : ii * e2m + e2m, :, :, :]
             self._delay[slc] = calc.outputs.delay_f[:-1, :, :, 1:]  # Skip pointing source
@@ -280,6 +301,44 @@ class Calc:
         calc.calc_input.axis[0] = "AZEL"
         calc.sitcm.sitaxo[0] = 0.0  # Axis offset
         calc.sitcm.sitxyz[:, 0] = [0, 0, 0]
+
+    def _setup_ephemeris(self, ephemeris):
+        """Configure external ephemeris via jplephem SPK kernel.
+
+        Parameters
+        ----------
+        ephemeris : str
+            Either a path to an SPK file, or a name like 'de440s' to download.
+        """
+        from jplephem.spk import SPK
+        from . import get_spk
+
+        if os.path.isfile(ephemeris):
+            spk_path = ephemeris
+        else:
+            spk_path = get_spk(ephemeris)
+        self._spk_kernel = SPK.open(spk_path)
+        calc.ephcom.use_ext_ephem = True
+
+    def _compute_epoch_tdb(self, epoch_index):
+        """Compute TDB Julian dates for all steps in a 2-minute epoch.
+
+        Parameters
+        ----------
+        epoch_index : int
+            Zero-based index of the 2-minute epoch.
+
+        Returns
+        -------
+        numpy.ndarray
+            TDB Julian dates for each time step.
+        """
+        e2m = int(calc.contrl.epoch2m)
+        d_interval = float(calc.contrl.d_interval)
+        epoch_start = self._start_time + TimeDelta(epoch_index * 120, format="sec")
+        step_offsets = np.arange(e2m) * d_interval
+        times = epoch_start + TimeDelta(step_offsets, format="sec")
+        return times.tdb.jd
 
     def set_scan(self, time, duration_min):
         """
@@ -885,7 +944,7 @@ def is_initialized(cb, item):
     """
     return (
         cb == "cmath"
-        or cb in ("outputs", "srcmod", "datafiles")  # Modules
+        or cb in ("outputs", "srcmod", "datafiles", "ephcom")  # Modules
         or cb in "units"  # File unit vars
         or cb == "cticm"
         and item != "a1tai"  # cctiu.f

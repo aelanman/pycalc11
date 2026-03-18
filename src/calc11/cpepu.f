@@ -1,5 +1,6 @@
 !*************************************************************************
       SUBROUTINE PEP ( XJD, ET, TSKIP, EARTH, SUN, XMOON )
+      use ephcom
       IMPLICIT None
 !
 ! 4.    PEP
@@ -190,6 +191,40 @@
 !
 !    Compute new values or use previous values?
        IF (TSKIP .eq. 1) Go to 510
+!
+!     Use externally-provided ephemeris data if available
+      IF (use_ext_ephem) THEN
+        do i=1,3
+          earth(i,1) = ext_earth(i,1,eph_step_idx)
+          earth(i,2) = ext_earth(i,2,eph_step_idx)
+          earth(i,3) = ext_earth(i,3,eph_step_idx)
+          earth1(i,1) = earth(i,1)
+          earth1(i,2) = earth(i,2)
+          earth1(i,3) = earth(i,3)
+          sun(i,1) = ext_sun(i,1,eph_step_idx)
+          sun(i,2) = ext_sun(i,2,eph_step_idx)
+          sun1(i,1) = sun(i,1)
+          sun1(i,2) = sun(i,2)
+          SUNb(i,1) = ext_sunb(i,1,eph_step_idx)
+          SUNb(i,2) = ext_sunb(i,2,eph_step_idx)
+          xmoon(i,1) = ext_xmoon(i,1,eph_step_idx)
+          xmoon(i,2) = ext_xmoon(i,2,eph_step_idx)
+          xmoon1(i,1) = xmoon(i,1)
+          xmoon1(i,2) = xmoon(i,2)
+          MOONb(i,1) = ext_moonb(i,1,eph_step_idx)
+          MOONb(i,2) = ext_moonb(i,2,eph_step_idx)
+        enddo
+        do k=1,7
+          do i=1,3
+            SPLANET(i,1,k) = ext_splanet(i,1,k,eph_step_idx)
+            SPLANET(i,2,k) = ext_splanet(i,2,k,eph_step_idx)
+            GPLANET(i,1,k) = ext_gplanet(i,1,k,eph_step_idx)
+            GPLANET(i,2,k) = ext_gplanet(i,2,k,eph_step_idx)
+          enddo
+        enddo
+        eph_step_idx = eph_step_idx + 1
+        Go to 510
+      ENDIF
 !
 !     Get the solar system geometry of the current observation from the
 !     DE/LE405 file.
