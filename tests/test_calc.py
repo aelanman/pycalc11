@@ -142,6 +142,10 @@ def run_calc_2x(
 
 def test_reset(params_vlbi):
     #   Reset works properly
+    # Ensure lazy-loaded DE421 path is set before capturing baseline state,
+    # since it is set once on first Calc creation and never cleared.
+    from pycalc11 import _ensure_de421
+    _ensure_de421()
     stat0 = get_mod_state(calc)
     ci = Calc(**params_vlbi)
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)

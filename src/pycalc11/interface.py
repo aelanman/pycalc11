@@ -83,6 +83,12 @@ class Calc:
     Keyword arguments supersede options in a loaded .calc file. For instance,
     if a set of sources is provided via the `source_names` and `source_coords` options,
     then the stations used in CALC will match those and not the ones in the provided .calc file.
+
+    .. warning::
+        The underlying Fortran code uses global state (common blocks). Only one
+        ``Calc`` instance may be executing ``run_driver`` at a time. Running
+        multiple instances concurrently (e.g., via threads) will produce
+        incorrect results.
     """
 
     _rerun = True  # Rerun driver before accessing results
@@ -145,6 +151,15 @@ class Calc:
             120.0001 / calc.contrl.d_interval
         ) + 1  # Number of steps in 2 min epoch
 
+        max_steps = int(calc.ephcom.ext_earth.shape[2])
+        n_steps = int(calc.contrl.epoch2m)
+        if n_steps > max_steps:
+            raise ValueError(
+                f"d_interval={d_interval} s produces {n_steps} steps per 2-minute "
+                f"epoch, exceeding the Fortran limit of {max_steps}. "
+                f"Increase d_interval to at least {120.0 / (max_steps - 1):.1f} s."
+            )
+
         # Set debug flags, if any
         # Note -- some can be quite noisy. TODO Clean up Fortran side of debugging info
         self.debug_flags = DebugFlags(debug_flags)
@@ -193,6 +208,12 @@ class Calc:
         self._spk_kernel = None
         if ephemeris is not None:
             self._setup_ephemeris(ephemeris)
+
+        # Ensure the DE421 Fortran binary path is set before dinitl reads it.
+        # This is needed even with an external ephemeris, since dinitl may
+        # reference the path during initialization.
+        from . import _ensure_de421
+        _ensure_de421()
 
         calc.dinitl(1)
 

@@ -31,8 +31,6 @@ Install directly from the repository with pip::
 The source code for CALC is in the repository and will be built and added as an
 extension to the pycalc11 module.
 
-On a first run, `pycalc11` will download and cache the JPL DE421 ephemeris file from a GitHub repository for difx. This can take around 30s.
-
 NOTE: Tests of the MacOS installation are currently failing.
      This seems to be due to some issue with gcc on the latest Mac versions. If you have trouble installing on a Mac, it's an issue with the build environment. See https://github.com/aelanman/pycalc11/issues/18
 
@@ -81,7 +79,7 @@ instance, and duration as a float representing the length of the scan in minutes
         station_names=site_names,
         station_coords=site_locs,
         source_coords=source_coords,
-        time=time,
+        start_time=time,
         duration_min=duration_min,
     )
 

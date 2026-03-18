@@ -7,10 +7,23 @@ from . import calc11
 from . import runner
 
 
-# Get JPL ephemeris data (DE421 binary for the default Fortran path)
-de421_url = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
-de421_path = download_file(de421_url, cache=True)
-calc11.datafiles.jpl_de421 = de421_path.ljust(128)
+# DE421 binary URL for the default Fortran ephemeris reader
+_DE421_URL = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
+_de421_loaded = False
+
+
+def _ensure_de421():
+    """Download and set the DE421 binary path if not already done.
+
+    Called lazily before the Fortran initializer needs it, so that
+    ``import pycalc11`` does not require network access.
+    """
+    global _de421_loaded
+    if _de421_loaded:
+        return
+    de421_path = download_file(_DE421_URL, cache=True)
+    calc11.datafiles.jpl_de421 = de421_path.ljust(128)
+    _de421_loaded = True
 
 
 def _format(fname):
