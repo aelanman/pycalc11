@@ -41,7 +41,8 @@ def get_spk(name="de440s"):
     Parameters
     ----------
     name : str
-        Ephemeris name (e.g., 'de421', 'de430', 'de440', 'de440s', 'de441').
+        Ephemeris name
+        Options: SPK_AVAIL
         The 's' variants (e.g., 'de440s') are smaller files covering a shorter
         time span and are recommended for typical use.
 
@@ -57,6 +58,7 @@ def get_spk(name="de440s"):
         )
     return download_file(_SPK_URLS[name], cache=True)
 
+get_spk.__doc__ = get_spk.__doc__.replace("SPK_AVAIL", "'" + "', '".join(list(_SPK_URLS)) + "'")
 
 from .interface import Calc
 
