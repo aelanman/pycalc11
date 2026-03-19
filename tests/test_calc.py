@@ -145,6 +145,7 @@ def test_reset(params_vlbi):
     # Ensure lazy-loaded DE421 path is set before capturing baseline state,
     # since it is set once on first Calc creation and never cleared.
     from pycalc11 import _ensure_de421
+
     _ensure_de421()
     stat0 = get_mod_state(calc)
     ci = Calc(**params_vlbi)
@@ -573,17 +574,17 @@ def _make_simple_calc(**extra_kwargs):
         ac.EarthLocation.from_geodetic(lon=-80.0, lat=26.0, height=50),
     ]
     srcs = ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs")
-    kwargs = dict(
-        station_names=["STA1", "STA2"],
-        station_coords=locs,
-        source_coords=srcs,
-        start_time=time,
-        duration_min=4,
-        base_mode="geocenter",
-        dry_atm=False,
-        wet_atm=False,
-        check_sites=False,
-    )
+    kwargs = {
+        "station_names": ["STA1", "STA2"],
+        "station_coords": locs,
+        "source_coords": srcs,
+        "start_time": time,
+        "duration_min": 4,
+        "base_mode": "geocenter",
+        "dry_atm": False,
+        "wet_atm": False,
+        "check_sites": False,
+    }
     kwargs.update(extra_kwargs)
     ci = Calc(**kwargs)
     ci.run_driver()
@@ -670,20 +671,20 @@ def test_surface_met_reset_clears_state():
 
 def test_surface_met_validation():
     """Invalid surface met inputs should raise errors."""
-    base = dict(
-        station_names=["STA1", "STA2"],
-        station_coords=[
+    base = {
+        "station_names": ["STA1", "STA2"],
+        "station_coords": [
             ac.EarthLocation.from_geodetic(lon=-118.0, lat=34.0, height=100),
             ac.EarthLocation.from_geodetic(lon=-80.0, lat=26.0, height=50),
         ],
-        source_coords=ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs"),
-        start_time=Time("2020-01-01T00:00:00", scale="utc"),
-        duration_min=4,
-        base_mode="geocenter",
-        dry_atm=False,
-        wet_atm=False,
-        check_sites=False,
-    )
+        "source_coords": ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs"),
+        "start_time": Time("2020-01-01T00:00:00", scale="utc"),
+        "duration_min": 4,
+        "base_mode": "geocenter",
+        "dry_atm": False,
+        "wet_atm": False,
+        "check_sites": False,
+    }
     # Wrong length
     with pytest.raises(ValueError, match="shape"):
         Calc(**base, surface_pressure=[1013.0])

@@ -66,10 +66,9 @@ def get_spk(name="de440s"):
     """
     name = name.lower()
     if name not in _SPK_URLS:
-        raise ValueError(
-            f"Unknown ephemeris '{name}'. Available: {list(_SPK_URLS.keys())}"
-        )
+        raise ValueError(f"Unknown ephemeris '{name}'. Available: {list(_SPK_URLS.keys())}")
     return download_file(_SPK_URLS[name], cache=True)
+
 
 get_spk.__doc__ = get_spk.__doc__.replace("SPK_AVAIL", "'" + "', '".join(list(_SPK_URLS)) + "'")
 

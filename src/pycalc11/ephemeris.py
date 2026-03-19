@@ -1,4 +1,4 @@
-""Ephemeris computation using jplephem SPK kernels."""
+"""Ephemeris computation using jplephem SPK kernels."""
 
 import numpy as np
 

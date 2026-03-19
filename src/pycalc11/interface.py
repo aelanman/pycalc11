@@ -238,6 +238,7 @@ class Calc:
         # This is needed even with an external ephemeris, since dinitl may
         # reference the path during initialization.
         from . import _ensure_de421
+
         _ensure_de421()
 
         calc.dinitl(1)
@@ -526,9 +527,7 @@ class Calc:
             return
         value = np.atleast_1d(np.asarray(value, dtype=np.float64))
         if value.shape != (self.nants,):
-            raise ValueError(
-                f"surface_pressure must have shape ({self.nants},), got {value.shape}"
-            )
+            raise ValueError(f"surface_pressure must have shape ({self.nants},), got {value.shape}")
         if np.any(value <= 0):
             raise ValueError("surface_pressure values must be positive (mbar).")
         calc.metmod.ext_pressure[1 : self.nants + 1] = value
@@ -570,9 +569,7 @@ class Calc:
             return
         value = np.atleast_1d(np.asarray(value, dtype=np.float64))
         if value.shape != (self.nants,):
-            raise ValueError(
-                f"surface_humidity must have shape ({self.nants},), got {value.shape}"
-            )
+            raise ValueError(f"surface_humidity must have shape ({self.nants},), got {value.shape}")
         if np.any((value < 0) | (value > 1)):
             raise ValueError("surface_humidity values must be between 0 and 1.")
         calc.metmod.ext_humidity[1 : self.nants + 1] = value
