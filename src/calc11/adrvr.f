@@ -1,6 +1,7 @@
       SUBROUTINE aDRIVR(Iscan,J2m)
       use outputs
       use srcmod
+      use metmod
       IMPLICIT None
 !
 ! 1.    DRIVR
@@ -799,6 +800,29 @@
 !    For difx, only the atmosphere partials are needed.
 !    The others are left for future use but commented out.
 !
+!     Copy station-indexed met data into the 2-element baseline arrays
+!     used by ATMP, if external met data has been provided.
+      If (use_ext_met) Then
+        SurPR(1,1) = ext_pressure(Istation1)
+        SurPR(1,2) = 0.D0
+        SurPR(2,1) = ext_pressure(Istation2)
+        SurPR(2,2) = 0.D0
+        SurTP(1,1) = ext_temperature(Istation1)
+        SurTP(1,2) = 0.D0
+        SurTP(2,1) = ext_temperature(Istation2)
+        SurTP(2,2) = 0.D0
+        SurHM(1,1) = ext_humidity(Istation1)
+        SurHM(1,2) = 0.D0
+        SurHM(2,1) = ext_humidity(Istation2)
+        SurHM(2,2) = 0.D0
+        metPR = 1
+        metTP = 1
+        metHM = 1
+      Else
+        metPR = 0
+        metTP = 0
+        metHM = 0
+      Endif
 !     Compute the atmosphere partials.
       CALL ATMP (SITLAT, SITLON, SITHEIGHT, XJD, CT, dATMCdh,           &
      &     gmfh, gmfw)

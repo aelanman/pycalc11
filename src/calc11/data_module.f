@@ -84,3 +84,23 @@
       Real*8 :: ext_moonb(3,2,MAX_EPH_STEPS)
 !
       end module ephcom
+
+      MODULE metmod
+      implicit none
+!
+!     Module to hold externally-provided (Python-side) surface
+!     meteorological data, indexed by station number.
+!
+!     Control flag: .true. = use Python-provided met data
+      logical :: use_ext_met = .false.
+!
+!     Maximum number of stations (must match Max_Stat in cmxst11.i)
+      Integer*4, parameter :: MAX_MET_STAT = 41
+!
+!     Surface pressure (mbar), temperature (deg C), relative humidity (0-1)
+!     per station.  Index runs over station number in the Calc site list.
+      Real*8 :: ext_pressure(MAX_MET_STAT)
+      Real*8 :: ext_temperature(MAX_MET_STAT)
+      Real*8 :: ext_humidity(MAX_MET_STAT)
+!
+      end module metmod

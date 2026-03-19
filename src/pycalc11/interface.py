@@ -77,6 +77,23 @@ class Calc:
         instead of by the Fortran binary file reader. This allows using
         any JPL planetary ephemeris.
         Default None (uses the built-in Fortran DE421 binary reader).
+    surface_pressure: array_like of float, optional
+        Surface atmospheric pressure at each station in mbar.
+        Must have one entry per station (matching ``station_coords``).
+        When provided, overrides the default standard-atmosphere model
+        (1013.25 mbar scaled by station altitude).
+        Default None.
+    surface_temperature: array_like of float, optional
+        Surface temperature at each station in degrees Celsius.
+        Must have one entry per station.
+        When provided, overrides the default standard-atmosphere model
+        (20 C minus 6.5 K/km lapse rate).
+        Default None.
+    surface_humidity: array_like of float, optional
+        Surface relative humidity at each station, as a fraction (0 to 1).
+        Must have one entry per station.
+        When provided, overrides the default value of 0.5 (50%).
+        Default None.
 
     Notes
     -----
@@ -127,6 +144,9 @@ class Calc:
         check_sites=True,
         debug_flags=None,
         ephemeris=None,
+        surface_pressure=None,
+        surface_temperature=None,
+        surface_humidity=None,
     ):
         # Setting defaults
         self._reset()  # Clear if there's another instance.
@@ -208,6 +228,11 @@ class Calc:
         self._spk_kernel = None
         if ephemeris is not None:
             self._setup_ephemeris(ephemeris)
+
+        # Surface meteorology
+        self.surface_pressure = surface_pressure
+        self.surface_temperature = surface_temperature
+        self.surface_humidity = surface_humidity
 
         # Ensure the DE421 Fortran binary path is set before dinitl reads it.
         # This is needed even with an external ephemeris, since dinitl may
@@ -302,6 +327,13 @@ class Calc:
         calc.srcmod.numstr = 0
         calc.units.ipoint = 40  # Reset units counter
         calc.units.iutot = 3
+
+        # Clear external ephemeris and met data
+        calc.ephcom.use_ext_ephem = False
+        calc.metmod.use_ext_met = False
+        calc.metmod.ext_pressure[:] = 0.0
+        calc.metmod.ext_temperature[:] = 0.0
+        calc.metmod.ext_humidity[:] = 0.0
 
         for key, part in calc.__dict__.items():
             # Select only common blocks
@@ -479,6 +511,80 @@ class Calc:
             raise ValueError("wet_atm must be a boolean type.")
         calc.contrl.atmwt[()] = b"Add-wet   " if value else b""
         self._rerun = True
+
+    @property
+    def surface_pressure(self):
+        """Surface pressure at each station in mbar, or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_pressure[1 : self.nants + 1].copy()
+
+    @surface_pressure.setter
+    def surface_pressure(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(
+                f"surface_pressure must have shape ({self.nants},), got {value.shape}"
+            )
+        if np.any(value <= 0):
+            raise ValueError("surface_pressure values must be positive (mbar).")
+        calc.metmod.ext_pressure[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    @property
+    def surface_temperature(self):
+        """Surface temperature at each station in degrees Celsius, or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_temperature[1 : self.nants + 1].copy()
+
+    @surface_temperature.setter
+    def surface_temperature(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(
+                f"surface_temperature must have shape ({self.nants},), got {value.shape}"
+            )
+        calc.metmod.ext_temperature[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    @property
+    def surface_humidity(self):
+        """Surface relative humidity at each station (0 to 1), or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_humidity[1 : self.nants + 1].copy()
+
+    @surface_humidity.setter
+    def surface_humidity(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(
+                f"surface_humidity must have shape ({self.nants},), got {value.shape}"
+            )
+        if np.any((value < 0) | (value > 1)):
+            raise ValueError("surface_humidity values must be between 0 and 1.")
+        calc.metmod.ext_humidity[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    def _update_ext_met(self):
+        """Enable or disable external met data based on which fields are set."""
+        has_p = np.any(calc.metmod.ext_pressure[1 : self.nants + 1] != 0)
+        has_t = np.any(calc.metmod.ext_temperature[1 : self.nants + 1] != 0)
+        has_h = np.any(calc.metmod.ext_humidity[1 : self.nants + 1] != 0)
+        calc.metmod.use_ext_met = has_p or has_t or has_h
 
     @property
     def uvw_mode(self):
@@ -965,7 +1071,7 @@ def is_initialized(cb, item):
     """
     return (
         cb == "cmath"
-        or cb in ("outputs", "srcmod", "datafiles", "ephcom")  # Modules
+        or cb in ("outputs", "srcmod", "datafiles", "ephcom", "metmod")  # Modules
         or cb in "units"  # File unit vars
         or cb == "cticm"
         and item != "a1tai"  # cctiu.f
