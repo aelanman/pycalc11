@@ -8,7 +8,7 @@ from . import runner
 
 
 # Get JPL ephemeris data
-de421_url = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
+de421_url = f"https://github.com/difx/difx/raw/refs/heads/main/applications/difxcalc11/data/DE421_{sys.byteorder}_Endian"
 de421_path = download_file(de421_url, cache=True)
 calc11.datafiles.jpl_de421 = de421_path.ljust(128)
 
