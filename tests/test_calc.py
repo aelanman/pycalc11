@@ -142,8 +142,10 @@ def run_calc_2x(
 
 def test_reset(params_vlbi):
     #   Reset works properly
-    # Ensure lazy-loaded DE421 path is set before capturing baseline state,
-    # since it is set once on first Calc creation and never cleared.
+    # Ensure the legacy DE421 binary path is set before capturing the baseline
+    # state. _reset() does not clear it (datafiles is treated as initialized),
+    # so pinning it here keeps the baseline consistent regardless of whether a
+    # legacy-ephemeris test ran earlier in the session.
     from pycalc11 import _ensure_de421
 
     _ensure_de421()
@@ -367,7 +369,11 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     params_vlbi["duration_min"] = 20
 
     quantities = ["delay", "delay_rate", "partials", "times", "uvw"]
-    ci = Calc(**params_vlbi, base_mode="geocenter", dry_atm=False, wet_atm=False)
+    # Use the legacy Fortran DE421 reader so the ephemeris matches the
+    # separately-installed difxcalc binary (which also uses DE421).
+    ci = Calc(
+        **params_vlbi, base_mode="geocenter", dry_atm=False, wet_atm=False, ephemeris="legacy"
+    )
     ci.run_driver()
     quants1 = {q: getattr(ci, q).copy() for q in quantities}
 
@@ -591,12 +597,28 @@ def _make_simple_calc(**extra_kwargs):
     return ci
 
 
-def test_jplephem_de421_matches_fortran():
-    """DE421 via jplephem should match the Fortran binary reader to ~10 ps."""
-    c_fortran = _make_simple_calc()
+def test_default_ephemeris_is_jpl_spk():
+    """With no ephemeris specified, the default is a JPL SPK kernel (not legacy)."""
+    from pycalc11 import DEFAULT_EPHEMERIS
+
+    assert DEFAULT_EPHEMERIS == "de440s"
+    c_default = _make_simple_calc()
+    # Default path loads an SPK kernel and enables the external-ephemeris flag.
+    assert c_default._spk_kernel is not None
+    assert bool(calc.ephcom.use_ext_ephem)
+
+
+def test_legacy_matches_jplephem_de421():
+    """The legacy Fortran DE421 reader should match JPL SPK DE421 to ~10 ps.
+
+    This confirms that the legacy binary ephemeris and the jplephem-based
+    DE421 SPK kernel produce equivalent delays, so switching the default to
+    the JPL path preserves numerical agreement with the old default.
+    """
+    c_legacy = _make_simple_calc(ephemeris="legacy")
     c_jplephem = _make_simple_calc(ephemeris="de421")
 
-    diff = np.abs(c_fortran.delay.to_value("s") - c_jplephem.delay.to_value("s"))
+    diff = np.abs(c_legacy.delay.to_value("s") - c_jplephem.delay.to_value("s"))
     # Allow up to 10 ps difference (from TDB computation differences)
     assert np.all(diff < 10e-12), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
 

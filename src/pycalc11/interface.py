@@ -70,13 +70,21 @@ class Calc:
         Default None
     ephemeris: str, optional
         JPL ephemeris to use for solar system body positions. Can be:
-        - A path to an SPK (.bsp) file
         - A name like 'de421', 'de430', 'de440', 'de440s', 'de441'
-          (will be downloaded and cached automatically)
-        When set, ephemeris positions are computed in Python via jplephem
-        instead of by the Fortran binary file reader. This allows using
-        any JPL planetary ephemeris.
-        Default None (uses the built-in Fortran DE421 binary reader).
+          (an SPK kernel will be downloaded and cached automatically)
+        - A path to an SPK (.bsp) file
+        - The string 'legacy' (or 'fortran'), to use the built-in Fortran
+          DE421 binary reader.
+        For a name or path, ephemeris positions are computed in Python via
+        jplephem, which allows using any JPL planetary ephemeris.
+        Default None, which uses the JPL SPK kernel named by
+        ``pycalc11.DEFAULT_EPHEMERIS`` (currently 'de440s').
+
+        .. note::
+            'legacy' mode downloads the DE421 binary from the difx GitHub
+            mirror and pins results to the superseded DE421 ephemeris. It is
+            retained mainly for reproducing older results. Prefer the default
+            (or an explicit 'de421') for new work.
     surface_pressure: array_like of float, optional
         Surface atmospheric pressure at each station in mbar.
         Must have one entry per station (matching ``station_coords``).
@@ -224,22 +232,19 @@ class Calc:
         # Add geocenter station
         self._add_geocenter()
 
-        # Set up ephemeris provider
+        # Set up ephemeris provider. Defaults to the package default JPL SPK
+        # kernel; pass ephemeris="legacy" for the Fortran DE421 binary reader.
         self._spk_kernel = None
-        if ephemeris is not None:
-            self._setup_ephemeris(ephemeris)
+        if ephemeris is None:
+            from . import DEFAULT_EPHEMERIS
+
+            ephemeris = DEFAULT_EPHEMERIS
+        self._setup_ephemeris(ephemeris)
 
         # Surface meteorology
         self.surface_pressure = surface_pressure
         self.surface_temperature = surface_temperature
         self.surface_humidity = surface_humidity
-
-        # Ensure the DE421 Fortran binary path is set before dinitl reads it.
-        # This is needed even with an external ephemeris, since dinitl may
-        # reference the path during initialization.
-        from . import _ensure_de421
-
-        _ensure_de421()
 
         calc.dinitl(1)
 
@@ -357,13 +362,29 @@ class Calc:
         calc.sitcm.sitxyz[:, 0] = [0, 0, 0]
 
     def _setup_ephemeris(self, ephemeris):
-        """Configure external ephemeris via jplephem SPK kernel.
+        """Configure the ephemeris provider.
 
         Parameters
         ----------
         ephemeris : str
-            Either a path to an SPK file, or a name like 'de440s' to download.
+            One of:
+            - 'legacy' or 'fortran': use the built-in Fortran DE421 binary
+              reader (downloads the legacy DE421 binary on first use).
+            - a path to an SPK (.bsp) file.
+            - a name like 'de440s' to download an SPK kernel.
+            The latter two compute ephemeris positions in Python via jplephem.
         """
+        if isinstance(ephemeris, str) and ephemeris.lower() in ("legacy", "fortran"):
+            # Legacy Fortran DE421 binary reader. The binary is opened lazily
+            # by the Fortran PEP/STATE routines during run_driver, but ensure
+            # the path is set here so it is ready by then.
+            from . import _ensure_de421
+
+            self._spk_kernel = None
+            calc.ephcom.use_ext_ephem = False
+            _ensure_de421()
+            return
+
         from jplephem.spk import SPK
         from . import get_spk
 
@@ -389,7 +410,13 @@ class Calc:
         """
         e2m = int(calc.contrl.epoch2m)
         d_interval = float(calc.contrl.d_interval)
-        epoch_start = self._start_time + TimeDelta(epoch_index * 120, format="sec")
+        if self._start_time is not None:
+            scan_start = self._start_time
+        else:
+            # Scan configured via a .calc file: recover the start time from the
+            # Fortran common block, where dscan stored it as a UTC Julian Date.
+            scan_start = Time(float(calc.ut1cm.xintv[0]), format="jd", scale="utc")
+        epoch_start = scan_start + TimeDelta(epoch_index * 120, format="sec")
         step_offsets = np.arange(e2m) * d_interval
         times = epoch_start + TimeDelta(step_offsets, format="sec")
         return times.tdb.jd
