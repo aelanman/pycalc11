@@ -20,7 +20,7 @@ Time.now().ut1
 
 if sys.argv[1] == "save":
     if not os.path.exists(cache_file):
-        de421_url = f"https://svn.atnf.csiro.au/difx/applications/difxcalc11/trunk/data/DE421_{sys.byteorder}_Endian"
+        de421_url = f"https://github.com/difx/difx/raw/refs/heads/main/applications/difxcalc11/data/DE421_{sys.byteorder}_Endian"
         de421_path = download_file(de421_url, cache=True)
         urls = get_cached_urls()
         export_download_cache(cache_file, urls=urls, overwrite=True)

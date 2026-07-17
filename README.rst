@@ -31,7 +31,7 @@ Install directly from the repository with pip::
 The source code for CALC is in the repository and will be built and added as an
 extension to the pycalc11 module.
 
-On a first run, `pycalc11` will download and cache the JPL DE421 ephemeris file from ATNF. This can take around 30s.
+On a first run, `pycalc11` will download and cache the JPL DE421 ephemeris file from a GitHub repository for difx. This can take around 30s.
 
 NOTE: Tests of the MacOS installation are currently failing.
      This seems to be due to some issue with gcc on the latest Mac versions. If you have trouble installing on a Mac, it's an issue with the build environment. See https://github.com/aelanman/pycalc11/issues/18
