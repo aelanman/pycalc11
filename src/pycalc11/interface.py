@@ -1,5 +1,6 @@
 """Classes to interface with compiled Fortran code."""
 
+import os
 import numpy as np
 import warnings
 from functools import partial
@@ -67,12 +68,52 @@ class Calc:
         Sets specific functions to print debug information.
         See DebugFlags class for list of flags
         Default None
+    ephemeris: str, optional
+        JPL ephemeris to use for solar system body positions. Can be:
+        - A name like 'de421', 'de430', 'de440', 'de440s', 'de441'
+          (an SPK kernel will be downloaded and cached automatically)
+        - A path to an SPK (.bsp) file
+        - The string 'legacy' (or 'fortran'), to use the built-in Fortran
+          DE421 binary reader.
+        For a name or path, ephemeris positions are computed in Python via
+        jplephem, which allows using any JPL planetary ephemeris.
+        Default None, which uses the JPL SPK kernel named by
+        ``pycalc11.DEFAULT_EPHEMERIS`` (currently 'de440s').
+
+        .. note::
+            'legacy' mode downloads the DE421 binary from the difx GitHub
+            mirror and pins results to the superseded DE421 ephemeris. It is
+            retained mainly for reproducing older results. Prefer the default
+            (or an explicit 'de421') for new work.
+    surface_pressure: array_like of float, optional
+        Surface atmospheric pressure at each station in mbar.
+        Must have one entry per station (matching ``station_coords``).
+        When provided, overrides the default standard-atmosphere model
+        (1013.25 mbar scaled by station altitude).
+        Default None.
+    surface_temperature: array_like of float, optional
+        Surface temperature at each station in degrees Celsius.
+        Must have one entry per station.
+        When provided, overrides the default standard-atmosphere model
+        (20 C minus 6.5 K/km lapse rate).
+        Default None.
+    surface_humidity: array_like of float, optional
+        Surface relative humidity at each station, as a fraction (0 to 1).
+        Must have one entry per station.
+        When provided, overrides the default value of 0.5 (50%).
+        Default None.
 
     Notes
     -----
     Keyword arguments supersede options in a loaded .calc file. For instance,
     if a set of sources is provided via the `source_names` and `source_coords` options,
     then the stations used in CALC will match those and not the ones in the provided .calc file.
+
+    .. warning::
+        The underlying Fortran code uses global state (common blocks). Only one
+        ``Calc`` instance may be executing ``run_driver`` at a time. Running
+        multiple instances concurrently (e.g., via threads) will produce
+        incorrect results.
     """
 
     _rerun = True  # Rerun driver before accessing results
@@ -110,6 +151,10 @@ class Calc:
         d_interval=24,
         check_sites=True,
         debug_flags=None,
+        ephemeris=None,
+        surface_pressure=None,
+        surface_temperature=None,
+        surface_humidity=None,
     ):
         # Setting defaults
         self._reset()  # Clear if there's another instance.
@@ -133,6 +178,15 @@ class Calc:
         calc.contrl.epoch2m = (
             120.0001 / calc.contrl.d_interval
         ) + 1  # Number of steps in 2 min epoch
+
+        max_steps = int(calc.ephcom.ext_earth.shape[2])
+        n_steps = int(calc.contrl.epoch2m)
+        if n_steps > max_steps:
+            raise ValueError(
+                f"d_interval={d_interval} s produces {n_steps} steps per 2-minute "
+                f"epoch, exceeding the Fortran limit of {max_steps}. "
+                f"Increase d_interval to at least {120.0 / (max_steps - 1):.1f} s."
+            )
 
         # Set debug flags, if any
         # Note -- some can be quite noisy. TODO Clean up Fortran side of debugging info
@@ -178,6 +232,20 @@ class Calc:
         # Add geocenter station
         self._add_geocenter()
 
+        # Set up ephemeris provider. Defaults to the package default JPL SPK
+        # kernel; pass ephemeris="legacy" for the Fortran DE421 binary reader.
+        self._spk_kernel = None
+        if ephemeris is None:
+            from . import DEFAULT_EPHEMERIS
+
+            ephemeris = DEFAULT_EPHEMERIS
+        self._setup_ephemeris(ephemeris)
+
+        # Surface meteorology
+        self.surface_pressure = surface_pressure
+        self.surface_temperature = surface_temperature
+        self.surface_humidity = surface_humidity
+
         calc.dinitl(1)
 
     def parse_calcfile(self, calcfile):
@@ -206,6 +274,11 @@ class Calc:
         self.alloc_out_arrays()
         e2m = calc.contrl.epoch2m - 1
         for ii in range(calc.calc_input.intrvls2min):
+            if self._spk_kernel is not None:
+                from .ephemeris import fill_ephem_arrays
+
+                tdb_jds = self._compute_epoch_tdb(ii)
+                fill_ephem_arrays(self._spk_kernel, tdb_jds, calc)
             calc.adrivr(1, ii + 1)
             slc = np.s_[ii * e2m : ii * e2m + e2m, :, :, :]
             self._delay[slc] = calc.outputs.delay_f[:-1, :, :, 1:]  # Skip pointing source
@@ -261,6 +334,13 @@ class Calc:
         calc.units.ipoint = 40  # Reset units counter
         calc.units.iutot = 3
 
+        # Clear external ephemeris and met data
+        calc.ephcom.use_ext_ephem = False
+        calc.metmod.use_ext_met = False
+        calc.metmod.ext_pressure[:] = 0.0
+        calc.metmod.ext_temperature[:] = 0.0
+        calc.metmod.ext_humidity[:] = 0.0
+
         for key, part in calc.__dict__.items():
             # Select only common blocks
             if key.startswith("_") or all(dk.startswith("_") for dk in part.__dict__):
@@ -280,6 +360,66 @@ class Calc:
         calc.calc_input.axis[0] = "AZEL"
         calc.sitcm.sitaxo[0] = 0.0  # Axis offset
         calc.sitcm.sitxyz[:, 0] = [0, 0, 0]
+
+    def _setup_ephemeris(self, ephemeris):
+        """Configure the ephemeris provider.
+
+        Parameters
+        ----------
+        ephemeris : str
+            One of:
+            - 'legacy' or 'fortran': use the built-in Fortran DE421 binary
+              reader (downloads the legacy DE421 binary on first use).
+            - a path to an SPK (.bsp) file.
+            - a name like 'de440s' to download an SPK kernel.
+            The latter two compute ephemeris positions in Python via jplephem.
+        """
+        if isinstance(ephemeris, str) and ephemeris.lower() in ("legacy", "fortran"):
+            # Legacy Fortran DE421 binary reader. The binary is opened lazily
+            # by the Fortran PEP/STATE routines during run_driver, but ensure
+            # the path is set here so it is ready by then.
+            from . import _ensure_de421
+
+            self._spk_kernel = None
+            calc.ephcom.use_ext_ephem = False
+            _ensure_de421()
+            return
+
+        from jplephem.spk import SPK
+        from . import get_spk
+
+        if os.path.isfile(ephemeris):
+            spk_path = ephemeris
+        else:
+            spk_path = get_spk(ephemeris)
+        self._spk_kernel = SPK.open(spk_path)
+        calc.ephcom.use_ext_ephem = True
+
+    def _compute_epoch_tdb(self, epoch_index):
+        """Compute TDB Julian dates for all steps in a 2-minute epoch.
+
+        Parameters
+        ----------
+        epoch_index : int
+            Zero-based index of the 2-minute epoch.
+
+        Returns
+        -------
+        numpy.ndarray
+            TDB Julian dates for each time step.
+        """
+        e2m = int(calc.contrl.epoch2m)
+        d_interval = float(calc.contrl.d_interval)
+        if self._start_time is not None:
+            scan_start = self._start_time
+        else:
+            # Scan configured via a .calc file: recover the start time from the
+            # Fortran common block, where dscan stored it as a UTC Julian Date.
+            scan_start = Time(float(calc.ut1cm.xintv[0]), format="jd", scale="utc")
+        epoch_start = scan_start + TimeDelta(epoch_index * 120, format="sec")
+        step_offsets = np.arange(e2m) * d_interval
+        times = epoch_start + TimeDelta(step_offsets, format="sec")
+        return times.tdb.jd
 
     def set_scan(self, time, duration_min):
         """
@@ -399,6 +539,76 @@ class Calc:
             raise ValueError("wet_atm must be a boolean type.")
         calc.contrl.atmwt[()] = b"Add-wet   " if value else b""
         self._rerun = True
+
+    @property
+    def surface_pressure(self):
+        """Surface pressure at each station in mbar, or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_pressure[1 : self.nants + 1].copy()
+
+    @surface_pressure.setter
+    def surface_pressure(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(f"surface_pressure must have shape ({self.nants},), got {value.shape}")
+        if np.any(value <= 0):
+            raise ValueError("surface_pressure values must be positive (mbar).")
+        calc.metmod.ext_pressure[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    @property
+    def surface_temperature(self):
+        """Surface temperature at each station in degrees Celsius, or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_temperature[1 : self.nants + 1].copy()
+
+    @surface_temperature.setter
+    def surface_temperature(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(
+                f"surface_temperature must have shape ({self.nants},), got {value.shape}"
+            )
+        calc.metmod.ext_temperature[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    @property
+    def surface_humidity(self):
+        """Surface relative humidity at each station (0 to 1), or None for default model."""
+        if not calc.metmod.use_ext_met:
+            return None
+        return calc.metmod.ext_humidity[1 : self.nants + 1].copy()
+
+    @surface_humidity.setter
+    def surface_humidity(self, value):
+        if value is None:
+            self._update_ext_met()
+            return
+        value = np.atleast_1d(np.asarray(value, dtype=np.float64))
+        if value.shape != (self.nants,):
+            raise ValueError(f"surface_humidity must have shape ({self.nants},), got {value.shape}")
+        if np.any((value < 0) | (value > 1)):
+            raise ValueError("surface_humidity values must be between 0 and 1.")
+        calc.metmod.ext_humidity[1 : self.nants + 1] = value
+        self._update_ext_met()
+        self._rerun = True
+
+    def _update_ext_met(self):
+        """Enable or disable external met data based on which fields are set."""
+        has_p = np.any(calc.metmod.ext_pressure[1 : self.nants + 1] != 0)
+        has_t = np.any(calc.metmod.ext_temperature[1 : self.nants + 1] != 0)
+        has_h = np.any(calc.metmod.ext_humidity[1 : self.nants + 1] != 0)
+        calc.metmod.use_ext_met = has_p or has_t or has_h
 
     @property
     def uvw_mode(self):
@@ -885,7 +1095,7 @@ def is_initialized(cb, item):
     """
     return (
         cb == "cmath"
-        or cb in ("outputs", "srcmod", "datafiles")  # Modules
+        or cb in ("outputs", "srcmod", "datafiles", "ephcom", "metmod")  # Modules
         or cb in "units"  # File unit vars
         or cb == "cticm"
         and item != "a1tai"  # cctiu.f

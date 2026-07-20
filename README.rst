@@ -31,7 +31,14 @@ Install directly from the repository with pip::
 The source code for CALC is in the repository and will be built and added as an
 extension to the pycalc11 module.
 
-On a first run, `pycalc11` will download and cache the JPL DE421 ephemeris file from a GitHub repository for difx. This can take around 30s.
+On first use, `pycalc11` will download and cache a JPL SPK ephemeris kernel from NAIF/JPL. By
+default this is ``de440s`` (~32 MB), read in Python via ``jplephem``. A different ephemeris may be
+selected with the ``ephemeris`` parameter, either by name (e.g. ``'de421'``, ``'de440'``, ``'de441'``)
+or as a path to an SPK (``.bsp``) file.
+
+The original Fortran DE421 binary reader is retained as a legacy option, selected with
+``ephemeris='legacy'``. It downloads the DE421 binary from the difx GitHub mirror and pins results
+to the superseded DE421 ephemeris; it is kept mainly for reproducing older results.
 
 NOTE: Tests of the MacOS installation are currently failing.
      This seems to be due to some issue with gcc on the latest Mac versions. If you have trouble installing on a Mac, it's an issue with the build environment. See https://github.com/aelanman/pycalc11/issues/18
@@ -81,7 +88,7 @@ instance, and duration as a float representing the length of the scan in minutes
         station_names=site_names,
         station_coords=site_locs,
         source_coords=source_coords,
-        time=time,
+        start_time=time,
         duration_min=duration_min,
     )
 

@@ -48,7 +48,59 @@
 
       end module datafiles
 
-!      MODULE stations
-!      implicit none
+      MODULE ephcom
+      implicit none
 !
-!      end module stations
+!     Module to hold externally-provided (Python-side) ephemeris data,
+!     allowing PEP to bypass the Fortran binary DE file reading.
+!
+!     Control flag: .true. = use Python-provided ephemeris data
+      logical :: use_ext_ephem = .false.
+!
+!     Maximum number of time steps per 2-minute epoch.
+!     Typical value is 6 (for 24s intervals over 2 min).
+!     150 covers d_interval as small as ~0.8s.
+      Integer*4, parameter :: MAX_EPH_STEPS = 150
+!
+!     Step counter, reset from Python before each adrivr call.
+      Integer*4 :: eph_step_idx = 1
+!
+!     Pre-computed PEP outputs for each time step.
+!     All in meters, m/s, m/s^2, J2000.0 frame.
+!
+!     Barycentric Earth position, velocity, acceleration
+      Real*8 :: ext_earth(3,3,MAX_EPH_STEPS)
+!     Geocentric Sun position, velocity
+      Real*8 :: ext_sun(3,2,MAX_EPH_STEPS)
+!     Geocentric Moon position, velocity
+      Real*8 :: ext_xmoon(3,2,MAX_EPH_STEPS)
+!     Barycentric planet positions, velocities (7 planets)
+      Real*8 :: ext_splanet(3,2,7,MAX_EPH_STEPS)
+!     Geocentric planet positions, velocities (7 planets)
+      Real*8 :: ext_gplanet(3,2,7,MAX_EPH_STEPS)
+!     Barycentric Sun position, velocity
+      Real*8 :: ext_sunb(3,2,MAX_EPH_STEPS)
+!     Barycentric Moon position, velocity
+      Real*8 :: ext_moonb(3,2,MAX_EPH_STEPS)
+!
+      end module ephcom
+
+      MODULE metmod
+      implicit none
+!
+!     Module to hold externally-provided (Python-side) surface
+!     meteorological data, indexed by station number.
+!
+!     Control flag: .true. = use Python-provided met data
+      logical :: use_ext_met = .false.
+!
+!     Maximum number of stations (must match Max_Stat in cmxst11.i)
+      Integer*4, parameter :: MAX_MET_STAT = 41
+!
+!     Surface pressure (mbar), temperature (deg C), relative humidity (0-1)
+!     per station.  Index runs over station number in the Calc site list.
+      Real*8 :: ext_pressure(MAX_MET_STAT)
+      Real*8 :: ext_temperature(MAX_MET_STAT)
+      Real*8 :: ext_humidity(MAX_MET_STAT)
+!
+      end module metmod

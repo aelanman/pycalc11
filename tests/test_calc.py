@@ -142,6 +142,13 @@ def run_calc_2x(
 
 def test_reset(params_vlbi):
     #   Reset works properly
+    # Ensure the legacy DE421 binary path is set before capturing the baseline
+    # state. _reset() does not clear it (datafiles is treated as initialized),
+    # so pinning it here keeps the baseline consistent regardless of whether a
+    # legacy-ephemeris test ran earlier in the session.
+    from pycalc11 import _ensure_de421
+
+    _ensure_de421()
     stat0 = get_mod_state(calc)
     ci = Calc(**params_vlbi)
     assert not compare_dicts(stat0, get_mod_state(calc), quiet=True)
@@ -362,7 +369,11 @@ def test_compare_to_difxcalc(params_vlbi, tmpdir):
     params_vlbi["duration_min"] = 20
 
     quantities = ["delay", "delay_rate", "partials", "times", "uvw"]
-    ci = Calc(**params_vlbi, base_mode="geocenter", dry_atm=False, wet_atm=False)
+    # Use the legacy Fortran DE421 reader so the ephemeris matches the
+    # separately-installed difxcalc binary (which also uses DE421).
+    ci = Calc(
+        **params_vlbi, base_mode="geocenter", dry_atm=False, wet_atm=False, ephemeris="legacy"
+    )
     ci.run_driver()
     quants1 = {q: getattr(ci, q).copy() for q in quantities}
 
@@ -554,3 +565,188 @@ def test_uvw(uvw_mode, tol, cent):
     bls_py = uvw_py[:, :2] - uvw_py[:, [2]]
     print(uvw_mode, cent.lat, np.max(np.abs(bls_ap - bls_py).to_value("cm")))
     assert_quantity_allclose(bls_ap, bls_py, atol=tol)
+
+
+# -----------------------------------
+# External ephemeris tests
+# -----------------------------------
+
+
+def _make_simple_calc(**extra_kwargs):
+    """Helper to create a Calc instance with a small, fast configuration."""
+    time = Time("2020-01-01T00:00:00", scale="utc")
+    locs = [
+        ac.EarthLocation.from_geodetic(lon=-118.0, lat=34.0, height=100),
+        ac.EarthLocation.from_geodetic(lon=-80.0, lat=26.0, height=50),
+    ]
+    srcs = ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs")
+    kwargs = {
+        "station_names": ["STA1", "STA2"],
+        "station_coords": locs,
+        "source_coords": srcs,
+        "start_time": time,
+        "duration_min": 4,
+        "base_mode": "geocenter",
+        "dry_atm": False,
+        "wet_atm": False,
+        "check_sites": False,
+    }
+    kwargs.update(extra_kwargs)
+    ci = Calc(**kwargs)
+    ci.run_driver()
+    return ci
+
+
+def test_default_ephemeris_is_jpl_spk():
+    """With no ephemeris specified, the default is a JPL SPK kernel (not legacy)."""
+    from pycalc11 import DEFAULT_EPHEMERIS
+
+    assert DEFAULT_EPHEMERIS == "de440s"
+    c_default = _make_simple_calc()
+    # Default path loads an SPK kernel and enables the external-ephemeris flag.
+    assert c_default._spk_kernel is not None
+    assert bool(calc.ephcom.use_ext_ephem)
+
+
+def test_legacy_matches_jplephem_de421():
+    """The legacy Fortran DE421 reader should match JPL SPK DE421 to ~10 ps.
+
+    This confirms that the legacy binary ephemeris and the jplephem-based
+    DE421 SPK kernel produce equivalent delays, so switching the default to
+    the JPL path preserves numerical agreement with the old default.
+    """
+    c_legacy = _make_simple_calc(ephemeris="legacy")
+    c_jplephem = _make_simple_calc(ephemeris="de421")
+
+    d_legacy = c_legacy.delay.to_value("s")
+    d_jplephem = c_jplephem.delay.to_value("s")
+
+    # The underlying Fortran arrays are global, so confirm each Calc kept its
+    # own copied results and that the two ephemeris pathsproduced different results
+    assert c_legacy._delay is not c_jplephem._delay
+    assert not np.shares_memory(c_legacy._delay, c_jplephem._delay)
+
+    diff = np.abs(d_legacy - d_jplephem)
+    assert np.max(diff) > 0, "legacy and jplephem delays are bit-identical; comparison is trivial"
+    # Allow up to 10 ps difference (from TDB computation differences)
+    assert np.all(diff < 10e-12), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
+
+
+def test_de440s_close_to_de421():
+    """DE440s and DE421 should agree to within ~1 ns for a modern epoch."""
+    c_de421 = _make_simple_calc(ephemeris="de421")
+    c_de440s = _make_simple_calc(ephemeris="de440s")
+
+    d_de421 = c_de421.delay.to_value("s")
+    d_de440s = c_de440s.delay.to_value("s")
+
+    # Distinct kernels must yield distinct, independently-stored results.
+    assert not np.shares_memory(c_de421._delay, c_de440s._delay)
+
+    diff = np.abs(d_de421 - d_de440s)
+    assert np.max(diff) > 0, "de421 and de440s delays are bit-identical; comparison is trivial"
+    # Ephemeris versions differ by tens of ps; allow up to 1 ns
+    assert np.all(diff < 1e-9), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
+
+
+# -----------------------------------
+# Surface meteorology tests
+# -----------------------------------
+
+
+def test_surface_met_changes_delay():
+    """Supplying surface met data should produce different delays than the default model."""
+    c_default = _make_simple_calc(dry_atm=True, wet_atm=True)
+    c_met = _make_simple_calc(
+        dry_atm=True,
+        wet_atm=True,
+        surface_pressure=[950.0, 1020.0],
+        surface_temperature=[30.0, 15.0],
+        surface_humidity=[0.2, 0.8],
+    )
+
+    d_default = c_default.delay.to_value("s")
+    d_met = c_met.delay.to_value("s")
+
+    diff = np.abs(d_default - d_met)
+    # Met data should change delays by at least ~0.1 ns
+    assert np.max(diff) > 1e-10, f"Max diff = {np.max(diff):.3e} s; expected > 0.1 ns"
+    # But not by more than ~100 ns (sanity check)
+    assert np.max(diff) < 1e-7, f"Max diff = {np.max(diff):.3e} s; unreasonably large"
+
+
+def test_surface_met_default_is_none():
+    """Without surface met data, properties should return None."""
+    ci = _make_simple_calc()
+    assert ci.surface_pressure is None
+    assert ci.surface_temperature is None
+    assert ci.surface_humidity is None
+
+
+def test_surface_met_properties_roundtrip():
+    """Surface met properties should reflect what was set."""
+    ci = _make_simple_calc(
+        surface_pressure=[1013.0, 1013.0],
+        surface_temperature=[20.0, 20.0],
+        surface_humidity=[0.5, 0.5],
+    )
+    # Properties read back correctly before another Calc resets global state
+    assert_allclose(ci.surface_pressure, [1013.0, 1013.0])
+    assert_allclose(ci.surface_temperature, [20.0, 20.0])
+    assert_allclose(ci.surface_humidity, [0.5, 0.5])
+
+
+def test_surface_met_reset_clears_state():
+    """Creating a new Calc without met data should clear the met state."""
+    _make_simple_calc(
+        surface_pressure=[950.0, 1020.0],
+        surface_temperature=[30.0, 15.0],
+        surface_humidity=[0.2, 0.8],
+    )
+    ci = _make_simple_calc()
+    assert ci.surface_pressure is None
+
+
+def test_surface_met_validation():
+    """Invalid surface met inputs should raise errors."""
+    base = {
+        "station_names": ["STA1", "STA2"],
+        "station_coords": [
+            ac.EarthLocation.from_geodetic(lon=-118.0, lat=34.0, height=100),
+            ac.EarthLocation.from_geodetic(lon=-80.0, lat=26.0, height=50),
+        ],
+        "source_coords": ac.SkyCoord(ra=[45, 180], dec=[30, -20], unit="deg", frame="icrs"),
+        "start_time": Time("2020-01-01T00:00:00", scale="utc"),
+        "duration_min": 4,
+        "base_mode": "geocenter",
+        "dry_atm": False,
+        "wet_atm": False,
+        "check_sites": False,
+    }
+    # Wrong length
+    with pytest.raises(ValueError, match="shape"):
+        Calc(**base, surface_pressure=[1013.0])
+    # Negative pressure
+    with pytest.raises(ValueError, match="positive"):
+        Calc(**base, surface_pressure=[-1.0, 1013.0])
+    # Humidity out of range
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        Calc(**base, surface_humidity=[0.5, 1.5])
+
+
+def test_surface_met_only_affects_atm():
+    """With atm disabled, surface met data should not change delays."""
+    c_noatm = _make_simple_calc(dry_atm=False, wet_atm=False)
+    c_noatm_met = _make_simple_calc(
+        dry_atm=False,
+        wet_atm=False,
+        surface_pressure=[950.0, 1020.0],
+        surface_temperature=[30.0, 15.0],
+        surface_humidity=[0.2, 0.8],
+    )
+
+    d1 = c_noatm.delay.to_value("s")
+    d2 = c_noatm_met.delay.to_value("s")
+
+    # With atmosphere disabled, met data should have no effect
+    assert_allclose(d1, d2, atol=1e-15)
