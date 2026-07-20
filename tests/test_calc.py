@@ -618,7 +618,16 @@ def test_legacy_matches_jplephem_de421():
     c_legacy = _make_simple_calc(ephemeris="legacy")
     c_jplephem = _make_simple_calc(ephemeris="de421")
 
-    diff = np.abs(c_legacy.delay.to_value("s") - c_jplephem.delay.to_value("s"))
+    d_legacy = c_legacy.delay.to_value("s")
+    d_jplephem = c_jplephem.delay.to_value("s")
+
+    # The underlying Fortran arrays are global, so confirm each Calc kept its
+    # own copied results and that the two ephemeris pathsproduced different results
+    assert c_legacy._delay is not c_jplephem._delay
+    assert not np.shares_memory(c_legacy._delay, c_jplephem._delay)
+
+    diff = np.abs(d_legacy - d_jplephem)
+    assert np.max(diff) > 0, "legacy and jplephem delays are bit-identical; comparison is trivial"
     # Allow up to 10 ps difference (from TDB computation differences)
     assert np.all(diff < 10e-12), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
 
@@ -628,7 +637,14 @@ def test_de440s_close_to_de421():
     c_de421 = _make_simple_calc(ephemeris="de421")
     c_de440s = _make_simple_calc(ephemeris="de440s")
 
-    diff = np.abs(c_de421.delay.to_value("s") - c_de440s.delay.to_value("s"))
+    d_de421 = c_de421.delay.to_value("s")
+    d_de440s = c_de440s.delay.to_value("s")
+
+    # Distinct kernels must yield distinct, independently-stored results.
+    assert not np.shares_memory(c_de421._delay, c_de440s._delay)
+
+    diff = np.abs(d_de421 - d_de440s)
+    assert np.max(diff) > 0, "de421 and de440s delays are bit-identical; comparison is trivial"
     # Ephemeris versions differ by tens of ps; allow up to 1 ns
     assert np.all(diff < 1e-9), f"Max diff = {np.max(diff) * 1e12:.2f} ps"
 
