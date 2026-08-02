@@ -138,6 +138,10 @@ class Calc:
         # Note -- some can be quite noisy. TODO Clean up Fortran side of debugging info
         self.debug_flags = DebugFlags(debug_flags)
 
+        # 
+        if station_names is not None and station_coords is not None:
+            assert len(station_names)==len(station_coords)
+            
         # Check for required parameters
         kwargs = {
             "station_names": station_names,
